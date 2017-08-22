@@ -26,7 +26,7 @@ _getvalue(x::AbstractVector{<:Number}) = x
 _getvalue(x::AbstractVector{<:JuMP.AbstractJuMPScalar}) = getvalue(x)
 
 
-JuMP.getvalue(r::JointLimitResult) = JointLimitResult(getvalue.((r.λ, r.generalized_force))...)
+JuMP.getvalue(r::JointLimitResult) = JointLimitResult(getvalue(r.λ), r.direction)
 JuMP.getvalue(x::MechanismState{<:JuMP.AbstractJuMPScalar}) = 
     MechanismState(x.mechanism, getvalue(configuration(x)), getvalue(velocity(x)), getvalue(additional_state(x)))
 # JuMP.getvalue(p::Pair{<:RigidBody, <:AbstractVector{<:ContactResult}}) = p.first => getvalue.(p.second)

@@ -1,18 +1,22 @@
-function add_free_region_constraints!(model::Model, xnext::MechanismState, env::Environment, x_dynamics::MechanismState)
+
+
+function add_free_region_constraints!(model::Model, xnext::LinearizedState, env::Environment)
     for (body, contact_env) in env.contacts
         for contact_point in contact_env.points
-            function _point_in_world(x)
-                q = x[1:num_positions(xnext)]
-                v = x[(num_positions(xnext)+1):end]
-                x_diff = MechanismState(xnext.mechanism, q, v)
-                point_in_world = transform_to_root(x_diff, contact_point.frame) * contact_point
-                point_in_world.v
-            end
+            # function _point_in_world(x)
+            #     q = x[1:num_positions(xnext)]
+            #     v = x[(num_positions(xnext)+1):end]
+            #     x_diff = MechanismState(xnext.mechanism, q, v)
+            #     point_in_world = transform_to_root(x_diff, contact_point.frame) * contact_point
+            #     point_in_world.v
+            # end
 
-            position = Point3D(root_frame(xnext.mechanism), _point_in_world(state_vector(x_dynamics)) + ForwardDiff.jacobian(_point_in_world, state_vector(x_dynamics)) * (state_vector(xnext) - state_vector(x_dynamics)))
+            # position = Point3D(root_frame(xnext.mechanism), _point_in_world(state_vector(x_dynamics)) + ForwardDiff.jacobian(_point_in_world, state_vector(x_dynamics)) * (state_vector(xnext) - state_vector(x_dynamics)))
+
+            position_in_world = Linear.evaluate(x -> transform_to_root(x, contact_point.frame) * contact_point, xnext)
 
             ConditionalJuMP.disjunction!(model,
-                [@?(position ∈ P) for P in contact_env.free_regions]) # (7)
+                [@?(position_in_world ∈ P) for P in contact_env.free_regions]) # (7)
         end
     end
 end
@@ -29,11 +33,12 @@ function update(x::MechanismState{X, M},
     world = root_body(mechanism)
     qnext = @variable(model, [1:num_positions(x)], lowerbound=-10, basename="qnext", upperbound=10)
     vnext = @variable(model, [1:num_velocities(x)], lowerbound=-10, basename="vnext", upperbound=10)
-    xnext = MechanismState(mechanism, qnext, vnext)
+    xnext = LinearizedState(x_dynamics, MechanismState(mechanism, qnext, vnext))
+    # xnext = MechanismState(mechanism, qnext, vnext)
 
     contact_results = map(env.contacts) do item
         body, contact_env = item
-        body => [resolve_contact(xnext, body, contact_point, obstacle, model, x_dynamics)
+        body => [resolve_contact(xnext, body, contact_point, obstacle, model)
             for contact_point in contact_env.points for obstacle in contact_env.obstacles]
     end
 
@@ -43,18 +48,21 @@ function update(x::MechanismState{X, M},
                     contact_force(result)) for result in results])
     end
 
-    add_free_region_constraints!(model, xnext, env, x_dynamics)
+    add_free_region_constraints!(model, xnext, env)
 
-    function _config_derivative(v)
-        q = oftype(v, configuration(x_dynamics))
-        x_diff = MechanismState(mechanism, q, v)
-        configuration_derivative(x_diff)
-    end
+    # function _config_derivative(v)
+    #     q = oftype(v, configuration(x_dynamics))
+    #     x_diff = MechanismState(mechanism, q, v)
+    #     configuration_derivative(x_diff)
+    # end
+    # jac_dq_wrt_v = ForwardDiff.jacobian(_config_derivative, velocity(x_dynamics))
 
-    jac_dq_wrt_v = ForwardDiff.jacobian(_config_derivative, velocity(x_dynamics))
+    jac_dq_wrt_v = Linear.jacobian(configuration_derivative, xnext)[:, length(qnext) + 1:end]
+
+
 
     joint_limit_results = convert(Dict{Joint, Vector{JointLimitResult{Variable, M}}},
-        Dict([joint => resolve_joint_limits(xnext, joint, limits, model) for (joint, limits) in joint_limits]))
+        Dict([joint => resolve_joint_limits(xnext.current_state, joint, limits, model) for (joint, limits) in joint_limits]))
     # joint_limit_results = Dict{Joint, Vector{JointLimitResult{Variable, Vector{GenericAffExpr{M, Variable}}}}}([joint => resolve_joint_limits(xnext, joint, limits, model) for (joint, limits) in joint_limits])
     joint_limit_forces = zeros(GenericAffExpr{M, Variable}, num_velocities(x))
     for (joint, results) in joint_limit_results
@@ -65,12 +73,12 @@ function update(x::MechanismState{X, M},
 
     H = mass_matrix(x_dynamics)
     bias = dynamics_bias(x_dynamics, externalwrenches)
-    config_derivative = jac_dq_wrt_v * velocity(xnext)
+    config_derivative = jac_dq_wrt_v * vnext
 
     @constraint(model, H * (vnext - velocity(x)) .== Δt * (u .+ joint_limit_forces .- bias)) # (5)
     @constraint(model, qnext .- configuration(x) .== Δt .* config_derivative) # (6)
 
-    LCPUpdate(xnext, u, contact_results, joint_limit_results)
+    LCPUpdate(xnext.current_state, u, contact_results, joint_limit_results)
 end
 
 function simulate(x0::MechanismState, 
