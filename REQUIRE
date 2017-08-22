@@ -1,1 +1,8 @@
 julia 0.6
+ConditionalJuMP
+Polyhedra 0.2
+StaticArrays
+JuMP
+RigidBodyDynamics 0.3
+Rotations
+ForwardDiff
