@@ -56,7 +56,7 @@ function resolve_contact(xnext::LinearizedState, body::RigidBody, point::Point3D
     # end
     # contact_velocity = FreeVector3D(root_frame(xnext.mechanism), _contact_velocity(state_vector(x_dynamics)) + ForwardDiff.jacobian(_contact_velocity, state_vector(x_dynamics)) * (state_vector(xnext) - state_vector(x_dynamics)))
 
-    contact_velocity = Linear.evaluate(x -> point_velocity(twist_wrt_world(x, body), transform_to_root(xnext.linear_state, point.frame) * point), xnext)
+    contact_velocity = Linear.evaluate(x -> point_velocity(twist_wrt_world(x, body), transform_to_root(linearization_state(xnext), point.frame) * point), xnext)
 
     # contact_velocity = point_velocity(Linear.evaluate(twist_wrt_world, xnext, body), point_in_world)
 

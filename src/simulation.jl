@@ -28,12 +28,12 @@ function update(x::MechanismState{X, M},
                 env::Environment, 
                 Δt::Real, 
                 model::Model, 
-                x_dynamics=x) where {X, M}
+                x_dynamics::MechanismState{<:Number}=x) where {X, M}
     mechanism = x.mechanism
     world = root_body(mechanism)
     qnext = @variable(model, [1:num_positions(x)], lowerbound=-10, basename="qnext", upperbound=10)
     vnext = @variable(model, [1:num_velocities(x)], lowerbound=-10, basename="vnext", upperbound=10)
-    xnext = LinearizedState(x_dynamics, MechanismState(mechanism, qnext, vnext))
+    xnext = LinearizedState(x_dynamics, vcat(qnext, vnext))
     # xnext = MechanismState(mechanism, qnext, vnext)
 
     contact_results = map(env.contacts) do item
@@ -62,7 +62,7 @@ function update(x::MechanismState{X, M},
 
 
     joint_limit_results = convert(Dict{Joint, Vector{JointLimitResult{Variable, M}}},
-        Dict([joint => resolve_joint_limits(xnext.current_state, joint, limits, model) for (joint, limits) in joint_limits]))
+        Dict([joint => resolve_joint_limits(xnext, joint, limits, model) for (joint, limits) in joint_limits]))
     # joint_limit_results = Dict{Joint, Vector{JointLimitResult{Variable, Vector{GenericAffExpr{M, Variable}}}}}([joint => resolve_joint_limits(xnext, joint, limits, model) for (joint, limits) in joint_limits])
     joint_limit_forces = zeros(GenericAffExpr{M, Variable}, num_velocities(x))
     for (joint, results) in joint_limit_results
@@ -78,7 +78,7 @@ function update(x::MechanismState{X, M},
     @constraint(model, H * (vnext - velocity(x)) .== Δt * (u .+ joint_limit_forces .- bias)) # (5)
     @constraint(model, qnext .- configuration(x) .== Δt .* config_derivative) # (6)
 
-    LCPUpdate(xnext.current_state, u, contact_results, joint_limit_results)
+    LCPUpdate(MechanismState(mechanism, qnext, vnext), u, contact_results, joint_limit_results)
 end
 
 function simulate(x0::MechanismState, 
