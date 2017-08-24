@@ -1,6 +1,6 @@
 
 function resolve_joint_limit(xnext::LinearizedState, joint::Joint, a::AbstractVector, b::Number, model::Model)
-    λ = @variable(model, lowerbound=0, upperbound=100, basename="λ")
+    λ = @variable(model, lowerbound=0, upperbound=200, basename="λ")
     q = configuration(xnext, joint)
     separation = a' * q - b
     @constraint model separation <= 0

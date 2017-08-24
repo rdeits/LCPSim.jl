@@ -2,4 +2,4 @@ using MechanismComplementarity
 using Base.Test
 
 # write your own tests here
-@test 1 == 2
+include("linearized_mechanism.jl")
