@@ -11,14 +11,14 @@ function add_free_region_constraints!(model::Model, xnext::LinearizedState, env:
     end
 end
 
-configuration_bounds(m::Mechanism) = 
-    collect(Base.Iterators.flatten([joint.bounds.position for joint in joints(m)]))
+all_configuration_bounds(m::Mechanism) = 
+    collect(Base.Iterators.flatten(map(position_bounds, joints(m))))
 
-velocity_bounds(m::Mechanism) = 
-    collect(Base.Iterators.flatten([joint.bounds.velocity for joint in joints(m)]))
+all_velocity_bounds(m::Mechanism) = 
+    collect(Base.Iterators.flatten(map(velocity_bounds, joints(m))))
 
-effort_bounds(m::Mechanism) = 
-    collect(Base.Iterators.flatten([joint.bounds.effort for joint in joints(m)]))
+all_effort_bounds(m::Mechanism) = 
+    collect(Base.Iterators.flatten(map(effort_bounds, joints(m))))
 
 function setbounds(x::Variable, b::Bounds)
     setlowerbound(x, lower(b))
@@ -27,32 +27,35 @@ function setbounds(x::Variable, b::Bounds)
 end
 
 function create_state_variables(model::Model, mech::Mechanism)
-    qnext = @variable(model, [1:num_positions(mech)], basename="qnext")
-    vnext = @variable(model, [1:num_velocities(mech)], basename="vnext")
+    qnext::Vector{Variable} = @variable(model, [1:num_positions(mech)], basename="qnext")
+    vnext::Vector{Variable} = @variable(model, [1:num_velocities(mech)], basename="vnext")
 
-    setbounds.(qnext, configuration_bounds(mech))
-    setbounds.(vnext, velocity_bounds(mech))
+    setbounds.(qnext, all_configuration_bounds(mech))
+    setbounds.(vnext, all_velocity_bounds(mech))
 
     @assert all(isfinite, lowerbound.(qnext)) && all(isfinite, upperbound.(qnext)) "All joint position limits must be finite"
     @assert all(isfinite, lowerbound.(vnext)) && all(isfinite, upperbound.(vnext)) "All joint velocity limits must be finite"
     qnext, vnext
 end
 
-function update(x::MechanismState{X, M}, 
-                u, 
-                env::Environment, 
-                Δt::Real, 
-                model::Model, 
-                x_dynamics::MechanismState{<:Number}=x) where {X, M}
+function update(x::StateRecord{X, M},
+                xnext::LinearizedState{Variable},
+                u,
+                env::Environment,
+                Δt::Real,
+                model::Model) where {X, M}
+    x_dynamics = linearization_state(xnext)
     mechanism = x.mechanism
-    world = root_body(mechanism)
-    qnext, vnext = create_state_variables(model, x.mechanism)
-    xnext = LinearizedState(x_dynamics, vcat(qnext, vnext))
+    qnext, vnext = create_state_variables(model, mechanism)
+    set_current_configuration!(xnext, qnext)
+    set_current_velocity!(xnext, vnext)
 
-    contact_results = map(env.contacts) do item
-        body, contact_env = item
-        body => [resolve_contact(xnext, body, contact_point, obstacle, model)
-            for contact_point in contact_env.points for obstacle in contact_env.obstacles]
+    contact_results = Dict{RigidBody{M}, Vector{ContactResult{Variable, M}}}()
+    for (body, contact_env) in env.contacts
+        contact_results[body] = []
+        for obstacle in contact_env.obstacles, contact_point in contact_env.points
+            push!(contact_results[body], resolve_contact(xnext, body, contact_point, obstacle, model))
+        end
     end
 
     externalwrenches = map(contact_results) do item
@@ -65,12 +68,13 @@ function update(x::MechanismState{X, M},
 
     jac_dq_wrt_v = Linear.jacobian(configuration_derivative, xnext)[:, length(qnext) + 1:end]
 
-    joint_limit_results = convert(Dict{Joint, Vector{JointLimitResult{Variable, M}}},
-        Dict([joint => resolve_joint_limits(xnext, joint, model) for joint in joints(mechanism)]))
+    joint_limit_results::Dict{Joint, Vector{JointLimitResult{Variable, M}}} = 
+        Dict([joint => resolve_joint_limits(xnext, joint, model) for joint in joints(mechanism)])
+
     joint_limit_forces = zeros(GenericAffExpr{M, Variable}, num_velocities(x))
     for (joint, results) in joint_limit_results
         for result in results
-            joint_limit_forces .+= (jac_dq_wrt_v')[:, parentindexes(configuration(x, joint))...] * generalized_force(result)
+            joint_limit_forces .+= (jac_dq_wrt_v')[:, parentindexes(configuration(xnext.dual_state, joint))...] * generalized_force(result)
         end
     end
 
@@ -81,7 +85,7 @@ function update(x::MechanismState{X, M},
     @constraint(model, H * (vnext - velocity(x)) .== Δt * (u .+ joint_limit_forces .- bias)) # (5)
     @constraint(model, qnext .- configuration(x) .== Δt .* config_derivative) # (6)
 
-    LCPUpdate(MechanismState(mechanism, qnext, vnext), u, contact_results, joint_limit_results)
+    LCPUpdate(StateRecord(mechanism, vcat(qnext, vnext)), u, contact_results, joint_limit_results)
 end
 
 function simulate(x0::MechanismState, 
@@ -90,12 +94,15 @@ function simulate(x0::MechanismState,
                   Δt::Real, 
                   N::Integer,
                   solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver)
-    x = x0
-    input_limits = effort_bounds(x0.mechanism)
+    x = StateRecord(x0)
+    xnext = LinearizedState{Variable}(x0)
+    input_limits = all_effort_bounds(x0.mechanism)
     map(1:N) do i
         m = Model(solver=solver)
         u = clamp.(controller(x), input_limits)
-        up = update(x, u, env, Δt, m)
+        set_linearization_configuration!(xnext, configuration(x))
+        set_linearization_velocity!(xnext, velocity(x))
+        up = update(x, xnext, u, env, Δt, m)
         solve(m)
         update_value = getvalue(up)
         x = update_value.state
@@ -115,7 +122,7 @@ function optimize(x0::MechanismState,
                   N::Integer,
                   m::Model=Model())
     x = x0
-    input_limits = effort_bounds(x0.mechanism)
+    input_limits = all_effort_bounds(x0.mechanism)
     results = map(1:N) do i
         u = @variable(m, [1:num_velocities(x0)], basename="u_$i")
         setbounds.(u, input_limits)

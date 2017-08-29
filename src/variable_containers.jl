@@ -12,23 +12,24 @@ struct JointLimitResult{T, M}
     direction::Vector{M}
 end
 
-struct LCPUpdate{T, M, S <: MechanismState{T, M}, I <:AbstractVector}
-    state::S
+struct LCPUpdate{T, M, I <:AbstractVector}
+    state::StateRecord{T}
     input::I
     contacts::Dict{RigidBody{M}, Vector{ContactResult{T, M}}}
     joint_contacts::Dict{Joint, Vector{JointLimitResult{T, M}}}
 end
 
-LCPUpdate(state::S, input::I, contacts::Associative, joint_contacts::Associative) where {T, M, S <: MechanismState{T, M}, I <: AbstractVector} = 
-    LCPUpdate{T, M, S, I}(state, input, contacts, joint_contacts)
+LCPUpdate(state::StateRecord{T}, input::I, contacts::Associative{<:RigidBody{M}}, joint_contacts::Associative) where {T, M, I <: AbstractVector} = 
+    LCPUpdate{T, M, I}(state, input, contacts, joint_contacts)
 
 _getvalue(x::AbstractVector{<:Number}) = x
 _getvalue(x::AbstractVector{<:JuMP.AbstractJuMPScalar}) = getvalue(x)
 
 
 JuMP.getvalue(r::JointLimitResult) = JointLimitResult(getvalue(r.λ), r.direction)
-JuMP.getvalue(x::MechanismState{<:JuMP.AbstractJuMPScalar}) = 
-    MechanismState(x.mechanism, getvalue(configuration(x)), getvalue(velocity(x)), getvalue(additional_state(x)))
+# JuMP.getvalue(x::MechanismState{<:JuMP.AbstractJuMPScalar}) = 
+#     MechanismState(x.mechanism, getvalue(configuration(x)), getvalue(velocity(x)), getvalue(additional_state(x)))
+JuMP.getvalue(r::StateRecord{<:JuMP.AbstractJuMPScalar}) = StateRecord(r.mechanism, getvalue.(r.state))
 # JuMP.getvalue(p::Pair{<:RigidBody, <:AbstractVector{<:ContactResult}}) = p.first => getvalue.(p.second)
 # JuMP.getvalue(p::Pair{<:Joint, <:AbstractVector{<:JointLimitResult}}) = p.first => getvalue.(p.second)
 JuMP.getvalue(up::LCPUpdate) =
