@@ -1,18 +1,8 @@
-
+using RigidBodyDynamics: Bounds, upper, lower
 
 function add_free_region_constraints!(model::Model, xnext::LinearizedState, env::Environment)
     for (body, contact_env) in env.contacts
         for contact_point in contact_env.points
-            # function _point_in_world(x)
-            #     q = x[1:num_positions(xnext)]
-            #     v = x[(num_positions(xnext)+1):end]
-            #     x_diff = MechanismState(xnext.mechanism, q, v)
-            #     point_in_world = transform_to_root(x_diff, contact_point.frame) * contact_point
-            #     point_in_world.v
-            # end
-
-            # position = Point3D(root_frame(xnext.mechanism), _point_in_world(state_vector(x_dynamics)) + ForwardDiff.jacobian(_point_in_world, state_vector(x_dynamics)) * (state_vector(xnext) - state_vector(x_dynamics)))
-
             position_in_world = Linear.evaluate(x -> transform_to_root(x, contact_point.frame) * contact_point, xnext)
 
             ConditionalJuMP.disjunction!(model,
@@ -21,20 +11,43 @@ function add_free_region_constraints!(model::Model, xnext::LinearizedState, env:
     end
 end
 
+configuration_bounds(m::Mechanism) = 
+    collect(Base.Iterators.flatten([joint.bounds.position for joint in joints(m)]))
+
+velocity_bounds(m::Mechanism) = 
+    collect(Base.Iterators.flatten([joint.bounds.velocity for joint in joints(m)]))
+
+effort_bounds(m::Mechanism) = 
+    collect(Base.Iterators.flatten([joint.bounds.effort for joint in joints(m)]))
+
+function setbounds(x::Variable, b::Bounds)
+    setlowerbound(x, lower(b))
+    setupperbound(x, upper(b))
+    x
+end
+
+function create_state_variables(model::Model, mech::Mechanism)
+    qnext = @variable(model, [1:num_positions(mech)], basename="qnext")
+    vnext = @variable(model, [1:num_velocities(mech)], basename="vnext")
+
+    setbounds.(qnext, configuration_bounds(mech))
+    setbounds.(vnext, velocity_bounds(mech))
+
+    @assert all(isfinite, lowerbound.(qnext)) && all(isfinite, upperbound.(qnext)) "All joint position limits must be finite"
+    @assert all(isfinite, lowerbound.(vnext)) && all(isfinite, upperbound.(vnext)) "All joint velocity limits must be finite"
+    qnext, vnext
+end
 
 function update(x::MechanismState{X, M}, 
                 u, 
-                joint_limits::Associative{<:Joint, <:HRepresentation}, 
                 env::Environment, 
                 Δt::Real, 
                 model::Model, 
                 x_dynamics::MechanismState{<:Number}=x) where {X, M}
     mechanism = x.mechanism
     world = root_body(mechanism)
-    qnext = @variable(model, [1:num_positions(x)], lowerbound=-10, basename="qnext", upperbound=10)
-    vnext = @variable(model, [1:num_velocities(x)], lowerbound=-10, basename="vnext", upperbound=10)
+    qnext, vnext = create_state_variables(model, x.mechanism)
     xnext = LinearizedState(x_dynamics, vcat(qnext, vnext))
-    # xnext = MechanismState(mechanism, qnext, vnext)
 
     contact_results = map(env.contacts) do item
         body, contact_env = item
@@ -50,20 +63,10 @@ function update(x::MechanismState{X, M},
 
     add_free_region_constraints!(model, xnext, env)
 
-    # function _config_derivative(v)
-    #     q = oftype(v, configuration(x_dynamics))
-    #     x_diff = MechanismState(mechanism, q, v)
-    #     configuration_derivative(x_diff)
-    # end
-    # jac_dq_wrt_v = ForwardDiff.jacobian(_config_derivative, velocity(x_dynamics))
-
     jac_dq_wrt_v = Linear.jacobian(configuration_derivative, xnext)[:, length(qnext) + 1:end]
 
-
-
     joint_limit_results = convert(Dict{Joint, Vector{JointLimitResult{Variable, M}}},
-        Dict([joint => resolve_joint_limits(xnext, joint, limits, model) for (joint, limits) in joint_limits]))
-    # joint_limit_results = Dict{Joint, Vector{JointLimitResult{Variable, Vector{GenericAffExpr{M, Variable}}}}}([joint => resolve_joint_limits(xnext, joint, limits, model) for (joint, limits) in joint_limits])
+        Dict([joint => resolve_joint_limits(xnext, joint, model) for joint in joints(mechanism)]))
     joint_limit_forces = zeros(GenericAffExpr{M, Variable}, num_velocities(x))
     for (joint, results) in joint_limit_results
         for result in results
@@ -83,16 +86,16 @@ end
 
 function simulate(x0::MechanismState, 
                   controller, 
-                  joint_limits::Associative{<:Joint, <:HRepresentation}, 
                   env::Environment, 
                   Δt::Real, 
                   N::Integer,
                   solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver)
     x = x0
+    input_limits = effort_bounds(x0.mechanism)
     map(1:N) do i
         m = Model(solver=solver)
-        u = controller(x)
-        up = update(x, u, joint_limits, env, Δt, m)
+        u = clamp.(controller(x), input_limits)
+        up = update(x, u, env, Δt, m)
         solve(m)
         update_value = getvalue(up)
         x = update_value.state
@@ -100,29 +103,23 @@ function simulate(x0::MechanismState,
     end
 end
 
+function fix_if_tightly_bounded(x::Variable)
+    if getlowerbound(x) == getupperbound(x)
+        JuMP.fix(x, getlowerbound(x))
+    end
+end
+
 function optimize(x0::MechanismState, 
-                  input_limits::Associative{<:Joint, <:AbstractVector},
-                  joint_limits::Associative{<:Joint, <:HRepresentation}, 
                   env::Environment, 
                   Δt,
                   N::Integer,
                   m::Model=Model())
     x = x0
-    u_min = zeros(num_velocities(x0))
-    u_max = zeros(num_velocities(x0))
-    for (joint, limits) in input_limits
-        u_min[parentindexes(velocity(x0, joint))...] .= limits[1]
-        u_max[parentindexes(velocity(x0, joint))...] .= limits[2]
-    end
+    input_limits = effort_bounds(x0.mechanism)
     results = map(1:N) do i
         u = @variable(m, [1:num_velocities(x0)], basename="u_$i")
-        setlowerbound.(u, u_min)
-        setupperbound.(u, u_max)
-        for i in 1:num_velocities(x0)
-            if u_min[i] == u_max[i]
-                JuMP.fix(u[i], u_min[i])
-            end
-        end
+        setbounds.(u, input_limits)
+        fix_if_tightly_bounded.(u)
         up = update(x, u, joint_limits, env, Δt, m, x0)
         x = up.state
         up

@@ -42,6 +42,7 @@
     <child link="rh_dummy"/>
     <origin xyz="0 0 0"/>
     <axis xyz="1 0 0"/>
+    <limit lower="0.25" upper="0.75" velocity="10" effort="10"/>
   </joint>
 
   <joint name="core_to_rh_z" type="prismatic">
@@ -49,6 +50,7 @@
     <child link="rh"/>
     <origin xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
+    <limit lower="-0.5" upper="0.5" velocity="10" effort="10"/>
   </joint>
 
   <link name="lh_dummy">
@@ -77,6 +79,7 @@
     <child link="lh_dummy"/>
     <origin xyz="0 0 0"/>
     <axis xyz="-1 0 0"/>
+    <limit lower="0.25" upper="0.75" velocity="10" effort="10"/>
   </joint>
 
   <joint name="core_to_lh_z" type="prismatic">
@@ -84,6 +87,7 @@
     <child link="lh"/>
     <origin xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
+    <limit lower="-0.5" upper="0.5" velocity="10" effort="10"/>
   </joint>
 
   <link name="rf_dummy">
@@ -112,6 +116,7 @@
     <child link="rf_dummy"/>
     <origin xyz="0 0 0"/>
     <axis xyz="1 0 0"/>
+    <limit lower="0.05" upper="0.5" velocity="10" effort="10"/>
   </joint>
 
   <joint name="core_to_rf_z" type="prismatic">
@@ -119,6 +124,7 @@
     <child link="rf"/>
     <origin xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
+    <limit lower="-1" upper="-0.55" velocity="10" effort="20"/>
   </joint>
 
     <link name="lf_dummy">
@@ -147,6 +153,7 @@
     <child link="lf_dummy"/>
     <origin xyz="0 0 0"/>
     <axis xyz="-1 0 0"/>
+    <limit lower="0.05" upper="0.5" velocity="10" effort="10"/>
   </joint>
 
   <joint name="core_to_lf_z" type="prismatic">
@@ -154,6 +161,7 @@
     <child link="lf"/>
     <origin xyz="0 0 0"/>
     <axis xyz="0 0 1"/>
+    <limit lower="-1" upper="-0.55" velocity="10" effort="20"/>
   </joint>
 
 
