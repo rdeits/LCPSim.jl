@@ -1,6 +1,6 @@
 
 function contact_basis(obs::Obstacle{T}) where T
-    θ = atan(obs.μ)
+    θ = π/2
     R = RotY(θ)
     a::SVector{3,T} = SVector{3, T}(obs.contact_face.a)
     SVector(
@@ -54,9 +54,9 @@ function resolve_contact(xnext::LinearizedState, body::RigidBody, point::Point3D
     λ   = @variable(model,          lowerbound=0,   basename="λ",     upperbound=200)
     c_n = @variable(model,        lowerbound=0,   basename="c_n",   upperbound=200)
 
-    point_in_world = Linear.evaluate(x -> transform_to_root(x, point.frame) * point, xnext)
+    point_in_world = linearized(x -> transform_to_root(x, point.frame) * point, xnext)
     separation_from_obstacle = separation(obstacle, point_in_world)
 
-    contact_velocity = Linear.evaluate(x -> point_velocity(twist_wrt_world(x, body), transform_to_root(linearization_state(xnext), point.frame) * point), xnext)
+    contact_velocity = linearized(x -> point_velocity(twist_wrt_world(x, body), transform_to_root(linearization_state(xnext), point.frame) * point), xnext)
     add_contact_constraints(model, point, obstacle, β, λ, c_n, D, separation_from_obstacle, contact_velocity)
 end

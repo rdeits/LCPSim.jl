@@ -3,7 +3,7 @@ using RigidBodyDynamics: Bounds, upper, lower
 function add_free_region_constraints!(model::Model, xnext::LinearizedState, env::Environment)
     for (body, contact_env) in env.contacts
         for contact_point in contact_env.points
-            position_in_world = Linear.evaluate(x -> transform_to_root(x, contact_point.frame) * contact_point, xnext)
+            position_in_world = linearized(x -> transform_to_root(x, contact_point.frame) * contact_point, xnext)
 
             ConditionalJuMP.disjunction!(model,
                 [@?(position_in_world ∈ P) for P in contact_env.free_regions]) # (7)
