@@ -13,7 +13,8 @@ module Linear
            current_configuration,
            current_velocity,
            LinearizedState,
-           linearization_state
+           linearization_state,
+           linearized
 
     struct LinearizedState{T, SCurrent <: StateRecord{T}, SLinear <: MechanismState{<:Number}, SDual <: MechanismState{<:ForwardDiff.Dual}}
         current_state::SCurrent
@@ -36,7 +37,7 @@ module Linear
         end
     end
 
-    function LinearizedState(linear::MechanismState, current_state::StateRecord{T}) where T
+    function LinearizedState(linear::MechanismState, current_state::Union{<:StateRecord{T}, <:MechanismState{T}}) where T
         state = LinearizedState{T}(linear)
         set_current_configuration!(state, configuration(current_state))
         set_current_velocity!(state, velocity(current_state))
@@ -73,7 +74,7 @@ module Linear
     linearization_state_vector(s::LinearizedState) = state_vector(s.linearization_state)
     current_state(s::LinearizedState) = s.current_state
 
-    function evaluate(f::Function, s::LinearizedState)
+    function linearized(f::Function, s::LinearizedState)
         wrapper, ydual = unwrap(f(s.dual_state))
         nx = length(state_vector(current_state(s)))
         v = ForwardDiff.value.(ydual)
