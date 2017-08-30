@@ -1,4 +1,4 @@
-The MechanismComplementarity.jl package is licensed under the MIT "Expat" License:
+The LCPSim.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2017: Robin Deits.
 > 

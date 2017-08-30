@@ -41,7 +41,7 @@ build_script:
 # Need to convert from shallow to complete for Pkg.clone to work
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
-      Pkg.clone(pwd(), \"MechanismComplementarity\"); Pkg.build(\"MechanismComplementarity\")"
+      Pkg.clone(pwd(), \"LCPSim\"); Pkg.build(\"LCPSim\")"
 
 test_script:
-  - C:\projects\julia\bin\julia -e "Pkg.test(\"MechanismComplementarity\")"
+  - C:\projects\julia\bin\julia -e "Pkg.test(\"LCPSim\")"

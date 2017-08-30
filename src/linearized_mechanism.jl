@@ -4,7 +4,7 @@ module Linear
     using RigidBodyDynamics
     import RigidBodyDynamics: configuration, velocity
     using ForwardDiff
-    using MechanismComplementarity: StateRecord
+    using LCPSim: StateRecord
 
     export set_current_configuration!,
            set_current_velocity!,

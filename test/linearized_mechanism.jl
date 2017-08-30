@@ -1,8 +1,8 @@
-using MechanismComplementarity
+using LCPSim
 using RigidBodyDynamics
 using Base.Test
 
-const lineval = MechanismComplementarity.Linear.evaluate
+const lineval = LCPSim.Linear.evaluate
 
 srand(1)
 @testset "linearized mechanism" begin
@@ -15,7 +15,7 @@ srand(1)
             set_velocity!(x0, randn(num_velocities(x0)))
             set_configuration!(x, randn(num_positions(x0)))
             set_velocity!(x, randn(num_velocities(x0)))
-            x_linear = MechanismComplementarity.Linear.LinearizedState(x0, state_vector(x))
+            x_linear = LCPSim.Linear.LinearizedState(x0, state_vector(x))
             @test center_of_mass(x) ≈ lineval(center_of_mass, x_linear)
             @test !(center_of_mass(x) ≈ center_of_mass(x0))
 
@@ -40,7 +40,7 @@ srand(1)
             set_configuration!(x, configuration(x0) + 1e-5 * (rand(num_positions(x0)) .- 0.5))
             set_velocity!(x, velocity(x0) + 1e-5 * (rand(num_velocities(x0)) .- 0.5))
 
-            x_linear =  MechanismComplementarity.Linear.LinearizedState(x0, state_vector(x))
+            x_linear =  LCPSim.Linear.LinearizedState(x0, state_vector(x))
 
             @test center_of_mass(x) ≈ lineval(center_of_mass, x_linear)
             @test !(center_of_mass(x0) ≈ center_of_mass(x))  # make sure we've perturbed enough for linearization to help
