@@ -24,9 +24,11 @@ git:
 #before_script: # homebrew for mac
 #  - if [ $TRAVIS_OS_NAME = osx ]; then brew install gcc; fi
 
-## uncomment the following lines to override the default test script
-#script:
-#  - julia -e 'Pkg.clone(pwd()); Pkg.build("LCPSim"); Pkg.test("LCPSim"; coverage=true)'
+# uncomment the following lines to override the default test script
+script:
+ - julia -e 'Pkg.clone(pwd()); Pkg.build("LCPSim")'
+ - juila -e 'Pkg.checkout("RigidBodyDynamics")'
+ - julia -e 'Pkg.test("LCPSim"; coverage=true)'
 after_success:
   # push coverage results to Coveralls
   # - julia -e 'cd(Pkg.dir("LCPSim")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
