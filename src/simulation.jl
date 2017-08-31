@@ -88,6 +88,15 @@ function update(x::StateRecord{X, M},
     LCPUpdate(StateRecord(mechanism, vcat(qnext, vnext)), u, contact_results, joint_limit_results)
 end
 
+"""
+Update the linearization state of ``xnext`` using the current state ``x``
+"""
+function semi_implicit_update!(xnext::LinearizedState, x::StateRecord, Δt)
+    set_linearization_velocity!(xnext, velocity(x))
+    qnext = configuration(xnext.linearization_state) .+ Δt .* configuration_derivative(xnext.linearization_state)
+    set_linearization_configuration!(xnext, qnext)
+end
+
 function simulate(x0::MechanismState, 
                   controller, 
                   env::Environment, 
@@ -100,8 +109,7 @@ function simulate(x0::MechanismState,
     map(1:N) do i
         m = Model(solver=solver)
         u = clamp.(controller(x), input_limits)
-        set_linearization_configuration!(xnext, configuration(x))
-        set_linearization_velocity!(xnext, velocity(x))
+        semi_implicit_update!(xnext, x, Δt)
         up = update(x, xnext, u, env, Δt, m)
         solve(m)
         update_value = getvalue(up)

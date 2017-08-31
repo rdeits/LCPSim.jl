@@ -11,11 +11,13 @@ const urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
 function inclined_brick(θ)
     mechanism = parse_urdf(Float64, urdf)
     core = findbody(mechanism, "core")
-    floating_base = joint_to_parent(core, mechanism)
-    floating_base.jointType = Planar([1., 0, 0], [0., 0, 1.])
-    floating_base.position_bounds = [Bounds(-5., 5), Bounds(0., 3), Bounds(-2π, 2π)]
-    floating_base.velocity_bounds = [Bounds(-10., 10), Bounds(-10., 10), Bounds(-2π, 2π)]
-    floating_base.effort_bounds = [Bounds(0., 0) for i in 1:3]
+    fixed_joint = joint_to_parent(core, mechanism)
+    floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint), 
+                          Planar([1., 0, 0], [0., 0, 1.]),
+                          position_bounds=[Bounds(-5., 5), Bounds(0., 3), Bounds(-2π, 2π)],
+                          velocity_bounds=[Bounds(-10., 10), Bounds(-10., 10), Bounds(-2π, 2π)],
+                          effort_bounds=[Bounds(0., 0) for i in 1:3])
+    replace_joint!(mechanism, fixed_joint, floating_base)
 
     world = root_body(mechanism)
     R = RotY(θ)

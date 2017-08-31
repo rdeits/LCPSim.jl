@@ -15,11 +15,13 @@ const urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
 function box_with_planar_base()
     mechanism = parse_urdf(Float64, urdf)
     core = findbody(mechanism, "core")
-    floating_base = joint_to_parent(core, mechanism)
-    set_joint_type!(floating_base, Planar([1., 0, 0], [0., 0, 1.]))
-    floating_base.position_bounds = [Bounds(-5., 5), Bounds(0., 3), Bounds(-2π, 2π)]
-    floating_base.velocity_bounds = [Bounds(-10., 10), Bounds(-10., 10), Bounds(-2π, 2π)]
-    floating_base.effort_bounds .= Bounds(0., 0)
+    fixed_joint = joint_to_parent(core, mechanism)
+    floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint), 
+                          Planar([1., 0, 0], [0., 0, 1.]),
+                          position_bounds=[Bounds(-5., 5), Bounds(0., 3), Bounds(-2π, 2π)],
+                          velocity_bounds=[Bounds(-10., 10), Bounds(-10., 10), Bounds(-2π, 2π)],
+                          effort_bounds=[Bounds(0., 0) for i in 1:3])
+    replace_joint!(mechanism, fixed_joint, floating_base)
 
     x0 = MechanismState{Float64}(mechanism)
     set_velocity!(x0, zeros(num_velocities(x0)))
