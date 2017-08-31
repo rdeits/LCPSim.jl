@@ -27,7 +27,8 @@ module Linear
             nv = num_velocities(mechanism)
             na = num_additional_states(mechanism)
             N = nq + nv + na
-            xdiff = Vector{ForwardDiff.Dual{N, Float64}}(N)
+            D = typeof(ForwardDiff.Dual(0.0, ForwardDiff.Partials(ntuple(i -> 0.0, N))))
+            xdiff = Vector{D}(N)
             ForwardDiff.seed!(xdiff, state_vector(linear), ForwardDiff.construct_seeds(ForwardDiff.Partials{N, Float64}))
             diffstate = MechanismState(mechanism, xdiff[1:nq], xdiff[nq + (1:nv)], xdiff[nq + nv + (1:na)])
             current = StateRecord(mechanism, Vector{T}(N))
