@@ -129,13 +129,14 @@ function optimize(x0::MechanismState,
                   Δt,
                   N::Integer,
                   m::Model=Model())
-    x = x0
+    x = StateRecord(x0)
+    xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
     results = map(1:N) do i
         u = @variable(m, [1:num_velocities(x0)], basename="u_$i")
         setbounds.(u, input_limits)
         fix_if_tightly_bounded.(u)
-        up = update(x, u, joint_limits, env, Δt, m, x0)
+        up = update(x, xnext, u, env, Δt, m)
         x = up.state
         up
     end
