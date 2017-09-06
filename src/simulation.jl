@@ -97,25 +97,30 @@ function semi_implicit_update!(xnext::LinearizedState, x::StateRecord, Δt)
     set_linearization_configuration!(xnext, qnext)
 end
 
-function simulate(x0::MechanismState, 
+function simulate(x0::MechanismState{T, M}, 
                   controller, 
                   env::Environment, 
                   Δt::Real, 
                   N::Integer,
-                  solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver)
+                  solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver) where {T, M}
     x = StateRecord(x0)
     xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
-    map(1:N) do i
+    results = LCPUpdate{Float64, M, Vector{Float64}}[]
+    for i in 1:N
         m = Model(solver=solver)
         u = clamp.(controller(x), input_limits)
         semi_implicit_update!(xnext, x, Δt)
         up = update(x, xnext, u, env, Δt, m)
-        solve(m)
+        status = solve(m)
+        if status != :Optimal
+            break
+        end
         update_value = getvalue(up)
         x = update_value.state
-        update_value
+        push!(results, update_value)
     end
+    results
 end
 
 function fix_if_tightly_bounded(x::Variable)
