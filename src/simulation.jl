@@ -80,9 +80,10 @@ function update(x::StateRecord{X, M},
 
     H = mass_matrix(x_dynamics)
     bias = dynamics_bias(x_dynamics, externalwrenches)
+    # bias = dynamics_bias(x_dynamics)
     config_derivative = jac_dq_wrt_v * vnext
 
-    @constraint(model, H * (vnext - velocity(x)) .== Δt * (u .+ joint_limit_forces .- bias)) # (5)
+    @constraint(model, H * (vnext - velocity(x)) .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)
     @constraint(model, qnext .- configuration(x) .== Δt .* config_derivative) # (6)
 
     LCPUpdate(StateRecord(mechanism, vcat(qnext, vnext)), u, contact_results, joint_limit_results)
@@ -111,6 +112,8 @@ function simulate(x0::MechanismState{T, M},
         m = Model(solver=solver)
         u = clamp.(controller(x), input_limits)
         semi_implicit_update!(xnext, x, Δt)
+        # xnext.linearization_state.q[1:4] = normalize(xnext.linearization_state.q[1:4])
+        # x.configuration[1:4] = normalize(x.configuration[1:4])
         up = update(x, xnext, u, env, Δt, m)
         status = solve(m)
         if status != :Optimal
