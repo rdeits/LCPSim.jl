@@ -22,7 +22,6 @@ function inclined_brick(θ)
     world = root_body(mechanism)
     R = RotY(θ)
     floor = planar_obstacle(default_frame(world), R * SVector(0., 0, 1), [0, 0, 0.], 1.0)
-    free_space = space_between([floor])
     env = Environment(
         Dict(core => ContactEnvironment(
                     [
@@ -31,8 +30,8 @@ function inclined_brick(θ)
                     Point3D(default_frame(core), SVector(0.1, 0, -0.2)),
                     Point3D(default_frame(core), SVector(-0.1, 0, -0.2)),
                      ],
-                    [floor],
-                    [free_space])))
+                    [floor]
+                    )))
 
     x0 = MechanismState{Float64}(mechanism)
     set_velocity!(x0, zeros(num_velocities(x0)))

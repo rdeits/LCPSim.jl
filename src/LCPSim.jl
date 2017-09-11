@@ -7,7 +7,6 @@ export Obstacle,
        ContactEnvironment,
        Environment,
        planar_obstacle,
-       space_between,
        simulate,
        update,
        optimize,
@@ -31,7 +30,6 @@ include("linearized_mechanism.jl")
 using .Linear
 
 include("environments.jl")
-include("conditional_jump_extensions.jl")
 include("variable_containers.jl")
 include("contact.jl")
 include("joint_limits.jl")
