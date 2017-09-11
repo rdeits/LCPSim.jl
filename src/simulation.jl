@@ -1,15 +1,15 @@
 using RigidBodyDynamics: Bounds, upper, lower
 
-function add_free_region_constraints!(model::Model, xnext::LinearizedState, env::Environment)
-    for (body, contact_env) in env.contacts
-        for contact_point in contact_env.points
-            position_in_world = linearized(x -> transform_to_root(x, contact_point.frame) * contact_point, xnext)
+# function add_free_region_constraints!(model::Model, xnext::LinearizedState, env::Environment)
+#     for (body, contact_env) in env.contacts
+#         for contact_point in contact_env.points
+#             position_in_world = linearized(x -> transform_to_root(x, contact_point.frame) * contact_point, xnext)
 
-            ConditionalJuMP.disjunction!(model,
-                [@?(position_in_world ∈ P) for P in contact_env.free_regions]) # (7)
-        end
-    end
-end
+#             ConditionalJuMP.disjunction!(model,
+#                 [@?(position_in_world ∈ P) for P in contact_env.free_regions]) # (7)
+#         end
+#     end
+# end
 
 all_configuration_bounds(m::Mechanism) = 
     collect(Base.Iterators.flatten(map(position_bounds, joints(m))))
@@ -64,7 +64,7 @@ function update(x::StateRecord{X, M},
                     contact_force(result)) for result in results])
     end
 
-    add_free_region_constraints!(model, xnext, env)
+    # add_free_region_constraints!(model, xnext, env)
 
     jac_dq_wrt_v = Linear.jacobian(configuration_derivative, xnext)[:, length(qnext) + 1:end]
 
@@ -80,9 +80,10 @@ function update(x::StateRecord{X, M},
 
     H = mass_matrix(x_dynamics)
     bias = dynamics_bias(x_dynamics, externalwrenches)
+    # bias = dynamics_bias(x_dynamics)
     config_derivative = jac_dq_wrt_v * vnext
 
-    @constraint(model, H * (vnext - velocity(x)) .== Δt * (u .+ joint_limit_forces .- bias)) # (5)
+    @constraint(model, H * (vnext - velocity(x)) .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)
     @constraint(model, qnext .- configuration(x) .== Δt .* config_derivative) # (6)
 
     LCPUpdate(StateRecord(mechanism, vcat(qnext, vnext)), u, contact_results, joint_limit_results)
@@ -97,25 +98,32 @@ function semi_implicit_update!(xnext::LinearizedState, x::StateRecord, Δt)
     set_linearization_configuration!(xnext, qnext)
 end
 
-function simulate(x0::MechanismState, 
+function simulate(x0::MechanismState{T, M}, 
                   controller, 
                   env::Environment, 
                   Δt::Real, 
                   N::Integer,
-                  solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver)
+                  solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver) where {T, M}
     x = StateRecord(x0)
     xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
-    map(1:N) do i
+    results = LCPUpdate{Float64, M, Vector{Float64}}[]
+    for i in 1:N
         m = Model(solver=solver)
         u = clamp.(controller(x), input_limits)
         semi_implicit_update!(xnext, x, Δt)
+        # xnext.linearization_state.q[1:4] = normalize(xnext.linearization_state.q[1:4])
+        # x.configuration[1:4] = normalize(x.configuration[1:4])
         up = update(x, xnext, u, env, Δt, m)
-        solve(m)
+        status = solve(m)
+        if status != :Optimal
+            break
+        end
         update_value = getvalue(up)
         x = update_value.state
-        update_value
+        push!(results, update_value)
     end
+    results
 end
 
 function fix_if_tightly_bounded(x::Variable)
@@ -129,13 +137,14 @@ function optimize(x0::MechanismState,
                   Δt,
                   N::Integer,
                   m::Model=Model())
-    x = x0
+    x = StateRecord(x0)
+    xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
     results = map(1:N) do i
         u = @variable(m, [1:num_velocities(x0)], basename="u_$i")
         setbounds.(u, input_limits)
         fix_if_tightly_bounded.(u)
-        up = update(x, u, joint_limits, env, Δt, m, x0)
+        up = update(x, xnext, u, env, Δt, m)
         x = up.state
         up
     end

@@ -34,3 +34,15 @@ function planar_revolute_base()
     attach!(mechanism, base, joint, eye(Transform3D, frame_before(joint), default_frame(base)), body)
     mechanism, body
 end
+
+function quaternion_floating_base()
+    world = RigidBody{Float64}("world")
+    mechanism = Mechanism(world; gravity=SVector(0, 0, -9.81))
+    frame = CartesianFrame3D("base")
+    inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
+    body = RigidBody(inertia)
+    joint = Joint("floating_base", QuaternionFloating{Float64}())
+    attach!(mechanism, world, joint, eye(Transform3D, frame_before(joint), default_frame(world)), body)
+    mechanism, body
+end
+

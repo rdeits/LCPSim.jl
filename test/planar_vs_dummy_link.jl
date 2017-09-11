@@ -75,6 +75,8 @@ end
 
     results1 = LCPSim.simulate(x1, controller, env1, Δt, 125, CbcSolver())
     results2 = LCPSim.simulate(x2, controller, env2, Δt, 125, CbcSolver())
+    @test length(results1) == 125
+    @test length(results2) == 125
 
     for i in 1:20
         set_configuration!(x1, configuration(results1[i].state))
