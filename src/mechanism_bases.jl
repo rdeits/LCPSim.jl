@@ -9,7 +9,7 @@ function planar_base()
     position_bounds(base_x) .= Bounds(-10., 10)
     velocity_bounds(base_x) .= Bounds(-10., 10)
     effort_bounds(base_x) .= Bounds(0., 0)
-    attach!(mechanism, world, base_x, eye(Transform3D, frame_before(base_x), default_frame(world)), dummy)
+    attach!(mechanism, world, dummy, base_x)
 
     frame = CartesianFrame3D("base")
     inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
@@ -18,7 +18,7 @@ function planar_base()
     position_bounds(base_z) .= Bounds(-10., 10)
     velocity_bounds(base_z) .= Bounds(-10., 10)
     effort_bounds(base_z) .= Bounds(0., 0)
-    attach!(mechanism, dummy, base_z, eye(Transform3D, frame_before(base_z), default_frame(dummy)), base)
+    attach!(mechanism, dummy, base, base_z)
     mechanism, base
 end
 
@@ -31,7 +31,7 @@ function planar_revolute_base()
     position_bounds(joint) .= Bounds(-π, π)
     velocity_bounds(joint) .= Bounds(-2π, 2π)
     effort_bounds(joint) .= Bounds(0., 0)
-    attach!(mechanism, base, joint, eye(Transform3D, frame_before(joint), default_frame(base)), body)
+    attach!(mechanism, base, body, joint)
     mechanism, body
 end
 
@@ -42,7 +42,7 @@ function quaternion_floating_base()
     inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
     body = RigidBody(inertia)
     joint = Joint("floating_base", QuaternionFloating{Float64}())
-    attach!(mechanism, world, joint, eye(Transform3D, frame_before(joint), default_frame(world)), body)
+    attach!(mechanism, world, body, joint)
     mechanism, body
 end
 
