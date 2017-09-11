@@ -1,16 +1,5 @@
 using RigidBodyDynamics: Bounds, upper, lower
 
-# function add_free_region_constraints!(model::Model, xnext::LinearizedState, env::Environment)
-#     for (body, contact_env) in env.contacts
-#         for contact_point in contact_env.points
-#             position_in_world = linearized(x -> transform_to_root(x, contact_point.frame) * contact_point, xnext)
-
-#             ConditionalJuMP.disjunction!(model,
-#                 [@?(position_in_world ∈ P) for P in contact_env.free_regions]) # (7)
-#         end
-#     end
-# end
-
 all_configuration_bounds(m::Mechanism) = 
     collect(Base.Iterators.flatten(map(position_bounds, joints(m))))
 
@@ -64,8 +53,6 @@ function update(x::StateRecord{X, M},
                     contact_force(result)) for result in results])
     end
 
-    # add_free_region_constraints!(model, xnext, env)
-
     jac_dq_wrt_v = Linear.jacobian(configuration_derivative, xnext)[:, length(qnext) + 1:end]
 
     joint_limit_results::Dict{Joint, Vector{JointLimitResult{Variable, M}}} = 
@@ -80,7 +67,6 @@ function update(x::StateRecord{X, M},
 
     H = mass_matrix(x_dynamics)
     bias = dynamics_bias(x_dynamics, externalwrenches)
-    # bias = dynamics_bias(x_dynamics)
     config_derivative = jac_dq_wrt_v * vnext
 
     @constraint(model, H * (vnext - velocity(x)) .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)

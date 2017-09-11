@@ -47,7 +47,6 @@ end
 function environment_with_floor(mechanism)
     world = root_body(mechanism)
     floor = planar_obstacle(default_frame(world), [0, 0, 1.], [0, 0, 0.], 0.5)
-    free_space = space_between([floor])
 
     core = findbody(mechanism, "core")
     env = Environment(
@@ -59,7 +58,7 @@ function environment_with_floor(mechanism)
                     Point3D(default_frame(core), SVector(-0.1, 0, -0.2)),
                      ],
                     [floor],
-                    [free_space])))
+                    )))
     env
 end
 
