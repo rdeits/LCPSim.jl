@@ -32,6 +32,7 @@ branches:
 script:
  - julia -e 'Pkg.clone(pwd()); Pkg.build("LCPSim")'
  - julia -e 'Pkg.checkout("RigidBodyDynamics")'
+ - julia -e 'Pkg.status()'
  - julia -e 'Pkg.test("LCPSim"; coverage=true)'
 after_success:
   # push coverage results to Coveralls
