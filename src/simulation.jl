@@ -136,3 +136,27 @@ function optimize(x0::MechanismState,
     end
     m, results
 end
+
+function optimize(x0::MechanismState,
+                  env::Environment,
+                  Δt,
+                  seed::AbstractVector{<:LCPUpdate},
+                  m::Model=Model())
+    N = length(seed)
+    x = StateRecord(x0)
+    xnext = LinearizedState{Variable}(x0)
+    input_limits = all_effort_bounds(x0.mechanism)
+    results = map(1:N) do i
+        set_linearization_configuration!(xnext, configuration(seed[i].state))
+        set_linearization_velocity!(xnext, velocity(seed[i].state))
+        u = @variable(m, [1:num_velocities(x0)], basename="u_$i")
+        setbounds.(u, input_limits)
+        fix_if_tightly_bounded.(u)
+        up = update(x, xnext, u, env, Δt, m)
+        x = up.state
+        up
+    end
+    setvalue.(results, seed)
+    m, results
+end
+    
