@@ -80,3 +80,16 @@ function add_contact_constraints_nonsliding(model::Model, point, obstacle, β, �
     ContactResult(β, λ, c_n, point, obstacle)
 end
 
+function add_contact_constraints_sticking(model::Model, point, obstacle, β, λ, c_n, D, separation_from_obstacle, contact_velocity)
+
+    @constraints model begin
+        separation_from_obstacle <= 1e-3 # (7)
+        separation_from_obstacle >= -1e-3
+        contact_velocity.v .== 0
+        λ == 0 # (8)
+        obstacle.μ * c_n .- sum(β) >= 0 # (9)
+    end
+
+    ContactResult(β, λ, c_n, point, obstacle)
+end
+
