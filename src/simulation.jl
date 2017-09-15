@@ -66,7 +66,22 @@ function update(x::StateRecord{X, M},
     end
 
     H = mass_matrix(x_dynamics)
-    bias = dynamics_bias(x_dynamics, externalwrenches)
+
+    bias1 = linearized(dynamics_bias, xnext)
+    
+    # set x_dynamics gravity to 0, set velocity to 0
+    g_old = x_dynamics.mechanism.gravitational_acceleration
+    x_dynamics.mechanism.gravitational_acceleration = FreeVector3D(root_frame(x_dynamics.mechanism), 0., 0, 0)
+    v_old = copy(velocity(x_dynamics))
+    set_velocity!(x_dynamics, zeros(num_velocities(x_dynamics)))
+    bias2 = dynamics_bias(x_dynamics, externalwrenches)
+
+    # restore gravity and velocity
+    x_dynamics.mechanism.gravitational_acceleration = g_old
+    set_velocity!(x_dynamics, v_old)
+
+    bias = bias1 + bias2
+
     config_derivative = jac_dq_wrt_v * vnext
 
     @constraint(model, H * (vnext - velocity(x)) .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)
