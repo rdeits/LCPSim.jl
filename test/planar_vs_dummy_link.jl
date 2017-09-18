@@ -70,14 +70,36 @@ end
     env2 = environment_with_floor(mech2)
 
     controller = x -> zeros(num_velocities(x))
-    Δt = 0.05
+    Δt = 0.01
+    N = 30
+    results1 = LCPSim.simulate(x1, controller, env1, Δt, N, CbcSolver())
+    results2 = LCPSim.simulate(x2, controller, env2, Δt, N, CbcSolver())
 
-    results1 = LCPSim.simulate(x1, controller, env1, Δt, 125, CbcSolver())
-    results2 = LCPSim.simulate(x2, controller, env2, Δt, 125, CbcSolver())
-    @test length(results1) == 125
-    @test length(results2) == 125
+    if Pkg.installed("RigidBodyTreeInspector") !== nothing
+        @eval using RigidBodyTreeInspector
+        @eval using DrakeVisualizer; 
+        @eval using CoordinateTransformations
+        @eval using GeometryTypes
+        DrakeVisualizer.any_open_windows() || DrakeVisualizer.new_window()
 
-    for i in 1:20
+        v1 = Visualizer()[:box][:planar]
+        setgeometry!(v1, mech1, parse_urdf(urdf, mech1))
+        v2 = Visualizer()[:box][:dummy]
+        setgeometry!(v2, mech2, parse_urdf(urdf, mech2))
+
+        for i in 1:length(results1)
+            set_configuration!(x1, configuration(results1[i].state))
+            settransform!(v1, x1)
+            set_configuration!(x2, configuration(results2[i].state))
+            settransform!(v2, x2)
+            sleep(Δt)
+        end
+    end
+
+    @test length(results1) == N
+    @test length(results2) == N
+
+    for i in 1:N
         set_configuration!(x1, configuration(results1[i].state))
         set_velocity!(x1, velocity(results1[i].state))
         set_configuration!(x2, configuration(results2[i].state))
@@ -88,17 +110,17 @@ end
         @test isapprox(translation(T1), translation(T2), atol=1e-3)
     end
 
-    for i in 20:100
-        set_configuration!(x1, configuration(results1[i].state))
-        set_velocity!(x1, velocity(results1[i].state))
-        set_configuration!(x2, configuration(results2[i].state))
-        set_velocity!(x2, velocity(results2[i].state))
-        T1 = transform_to_root(x1, findbody(mech1, "core"))
-        T2 = transform_to_root(x2, findbody(mech2, "core"))
-        @test isapprox(rotation(T1), rotation(T2), atol=1e-2)
-        @test isapprox(translation(T1), translation(T2), atol=1e-2)
-    end
+    # for i in 100:200
+    #     set_configuration!(x1, configuration(results1[i].state))
+    #     set_velocity!(x1, velocity(results1[i].state))
+    #     set_configuration!(x2, configuration(results2[i].state))
+    #     set_velocity!(x2, velocity(results2[i].state))
+    #     T1 = transform_to_root(x1, findbody(mech1, "core"))
+    #     T2 = transform_to_root(x2, findbody(mech2, "core"))
+    #     @test isapprox(rotation(T1), rotation(T2), atol=1e-2)
+    #     @test isapprox(translation(T1), translation(T2), atol=1e-2)
+    # end
 
-    @test norm(velocity(results1[end].state)) <= 0.4
-    @test norm(velocity(results2[end].state)) <= 0.4
+    # @test norm(velocity(results1[end].state)) <= 0.4
+    # @test norm(velocity(results2[end].state)) <= 0.4
 end
