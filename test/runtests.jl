@@ -5,3 +5,4 @@ using Base.Test
 include("linearized_mechanism.jl")
 include("inclined_brick.jl")
 include("planar_vs_dummy_link.jl")
+include("acrobot.jl")
