@@ -118,6 +118,10 @@ function dynamics_with_contact_constraint(state::MechanismState, input::Abstract
     vcat(v, v̇)
 end
 
+"""
+From "Full Dynamics LQR Control of a Humanoid Robot: An Experimental Study on
+Balancing and Squatting" by Sean Mason et al.
+"""
 function contact_linearize(state0, input0, Jc)
     if norm(velocity(state0)) > 0
         error("Only static postures supported")
@@ -140,6 +144,10 @@ function contact_linearize(state0, input0, Jc)
     A, B, dynamics(state_vector(state0), input0)
 end
 
+"""
+From "Balancing and Walking Using Full Dynamics LQR Control With Contact
+Constraints" by Sean Mason et al.
+"""
 function contact_lqr(state::MechanismState, input::AbstractVector, Q::AbstractMatrix, R::AbstractMatrix, contacts::AbstractVector{<:Point3D})
     Jc = contact_jacobian(state, contacts)
     A, B, c = contact_linearize(state, input, Jc)
