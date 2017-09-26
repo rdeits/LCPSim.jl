@@ -107,7 +107,7 @@ end
         T1 = transform_to_root(x1, findbody(mech1, "core"))
         T2 = transform_to_root(x2, findbody(mech2, "core"))
         @test isapprox(rotation(T1), rotation(T2), atol=1e-3)
-        @test isapprox(translation(T1), translation(T2), atol=1e-3)
+        @test isapprox(translation(T1), translation(T2), atol=2e-3)
     end
 
     # for i in 100:200
