@@ -42,7 +42,7 @@ function add_contact_constraints(model::Model, point, obstacle, β, λ, c_n, D, 
     #     [(&)(@?(separation_from_obstacle == 0), @?(λ + D_transpose_times_v[j] == 0), [@?(β[i] == 0) for i in 1:k if i != j]...) for j in 1:k]]
     # ConditionalJuMP.disjunction!(model, cases)
 
-    @disjunction(model, (separation_from_obstacle == 0), (c_n == 0)) # (10)
+    @disjunction(model, ((&)(separation_from_obstacle >= -1e-3, separation_from_obstacle <= 1e-3)), (c_n == 0)) # (10)
     for j in 1:length(D)
         @disjunction(model, ((λ + D_transpose_times_v[j]) == 0), β[j] == 0) # (11)
     end

@@ -35,5 +35,6 @@ include("contact.jl")
 include("joint_limits.jl")
 include("simulation.jl")
 include("mechanism_bases.jl")
+include("contact_lqr.jl")
 
 end # module
