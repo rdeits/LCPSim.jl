@@ -47,7 +47,9 @@ function JuMP.setvalue(r::JointLimitResult{<:AbstractJuMPScalar}, seed::JointLim
 end
 
 function JuMP.setvalue(d::Dict{<:Joint, <:Vector{<:JointLimitResult}}, seed::Dict)
-    [setvalue.(v1, v2) for (v1, v2) in zip(values(d), values(seed))]
+    for k in keys(d)
+        setvalue.(d[k], seed[k])
+    end
 end
 
 function JuMP.setvalue(up::LCPUpdate{<:AbstractJuMPScalar}, seed::LCPUpdate{<:Number})

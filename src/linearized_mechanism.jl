@@ -4,6 +4,7 @@ module Linear
     using RigidBodyDynamics
     import RigidBodyDynamics: configuration, velocity
     using ForwardDiff
+    using JuMP: AbstractJuMPScalar, getvalue
     using LCPSim: StateRecord
 
     export set_current_configuration!,
@@ -36,7 +37,18 @@ module Linear
                                          linear,
                                          diffstate)
         end
+
+        function LinearizedState{T}(linear::MechanismState{<:AbstractJuMPScalar}) where T
+            q = getvalue(configuration(linear))
+            v = getvalue(velocity(linear))
+            s = getvalue(additional_state(linear))
+            if any(isnan, q) || any(isnan, v) || any(isnan, s)
+                throw(ArgumentError("To construct a linearized state, the given state must have a defined value (which you can provide with JuMP.setvalue() or JuMP.fix()"))
+            end
+            LinearizedState{T}(MechanismState(linear.mechanism, q, v, s))
+        end
     end
+
 
     function LinearizedState(linear::MechanismState, current_state::Union{<:StateRecord{T}, <:MechanismState{T}}) where T
         state = LinearizedState{T}(linear)

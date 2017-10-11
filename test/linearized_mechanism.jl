@@ -1,5 +1,6 @@
 using LCPSim
 using RigidBodyDynamics
+using JuMP
 using Base.Test
 
 srand(1)
@@ -55,5 +56,18 @@ srand(1)
                 @test transform_to_root(x, frame) * p ≈ linearized(x -> transform_to_root(x, frame) * p, x_linear)
             end
         end
+    end
+
+    @testset "jump state" begin
+        mechanism = rand_chain_mechanism(Float64, [Prismatic{Float64} for i = 1:5]...)
+        m = Model()
+        @variable m q[1:num_positions(mechanism)]
+        @variable m v[1:num_velocities(mechanism)]
+        setvalue(q, randn(length(q)))
+        setvalue(v, randn(length(v)))
+        x_var = MechanismState(mechanism, q, v)
+        x_linear = LinearizedState{Float64}(x_var)
+        @test configuration(x_linear.linearization_state) == getvalue(q)
+        @test velocity(x_linear.linearization_state) == getvalue(v)
     end
 end
