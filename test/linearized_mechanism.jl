@@ -66,8 +66,8 @@ srand(1)
         setvalue(q, randn(length(q)))
         setvalue(v, randn(length(v)))
         x_var = MechanismState(mechanism, q, v)
-        x_linear = LinearizedState(x_var)
-        @test current_configuration(x_linear) == getvalue(q)
-        @test current_velocity(x_linear) == getvalue(v)
+        x_linear = LinearizedState{Float64}(x_var)
+        @test LCPSim.Linear.current_configuration(x_linear) == getvalue(q)
+        @test LCPSim.Linear.current_velocity(x_linear) == getvalue(v)
     end
 end
