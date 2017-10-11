@@ -42,7 +42,7 @@ function add_contact_constraints(model::Model, point, obstacle, β, λ, c_n, D, 
     #     [(&)(@?(separation_from_obstacle == 0), @?(λ + D_transpose_times_v[j] == 0), [@?(β[i] == 0) for i in 1:k if i != j]...) for j in 1:k]]
     # ConditionalJuMP.disjunction!(model, cases)
 
-    @disjunction(model, ((&)(separation_from_obstacle >= -1e-3, separation_from_obstacle <= 1e-3)), (c_n == 0)) # (10)
+    @disjunction(model, (separation_from_obstacle <= 1e-3), (c_n == 0)) # (10)
     for j in 1:length(D)
         @disjunction(model, ((λ + D_transpose_times_v[j]) == 0), β[j] == 0) # (11)
     end
@@ -53,9 +53,9 @@ end
 
 function resolve_contact(xnext::LinearizedState, body::RigidBody, point::Point3D, obstacle::Obstacle, model::Model)
     D = contact_basis(obstacle)
-    β   = @variable(model, [1:length(D)], lowerbound=0, basename="β", upperbound=200)
-    λ   = @variable(model, lowerbound=0, basename="λ", upperbound=200)
-    c_n = @variable(model, lowerbound=0, basename="c_n", upperbound=200)
+    β   = @variable(model, [1:length(D)], lowerbound=0, basename="β", upperbound=1000)
+    λ   = @variable(model, lowerbound=0, basename="λ", upperbound=1000)
+    c_n = @variable(model, lowerbound=0, basename="c_n", upperbound=1000)
 
     point_in_world = linearized(x -> transform_to_root(x, point.frame) * point, xnext)
     separation_from_obstacle = separation(obstacle, point_in_world)

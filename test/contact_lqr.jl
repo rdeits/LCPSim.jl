@@ -39,31 +39,32 @@ function hopper_dynamics_in_contact(x, u)
     vcat(v, v̇)
 end
 
+@testset "contact LQR" begin
+    x_fp = [1., -1, 0, 0]
+    u_fp = [-9.81]
+    @test hopper_dynamics_in_contact(x_fp, u_fp) ≈ zeros(4) 
 
-x_fp = [1., -1, 0, 0]
-u_fp = [-9.81]
-@test hopper_dynamics_in_contact(x_fp, u_fp) ≈ zeros(4) 
+    A = ForwardDiff.jacobian(x -> hopper_dynamics_in_contact(x, u_fp), x_fp)
+    B = ForwardDiff.jacobian(u -> hopper_dynamics_in_contact(x_fp, u), u_fp)
+    Q = diagm([100, 10, 1, 1])
+    R = 0.1 * eye(1)
+    Jc = [1. 1]
+    Jcdot = [0. 0]
+    N = nullspace([Jc zeros(1, 2); Jcdot Jc])
+    Am = N' * A * N
+    Bm = N' * B
+    Rm = R
+    Qm = N' * Q * N
+    Km, Sm = LCPSim.ContactLQR.lqr(Am, Bm, Qm, Rm)
+    K = Km * N'
+    @test K ≈ [-16.5831 16.5831 -4.64576 4.64576] atol=1e-4
 
-A = ForwardDiff.jacobian(x -> hopper_dynamics_in_contact(x, u_fp), x_fp)
-B = ForwardDiff.jacobian(u -> hopper_dynamics_in_contact(x_fp, u), u_fp)
-Q = diagm([100, 10, 1, 1])
-R = 0.1 * eye(1)
-Jc = [1. 1]
-Jcdot = [0. 0]
-N = nullspace([Jc zeros(1, 2); Jcdot Jc])
-Am = N' * A * N
-Bm = N' * B
-Rm = R
-Qm = N' * Q * N
-Km = LCPSim.ContactLQR.lqr(Am, Bm, Qm, Rm)
-K = Km * N'
-@test K ≈ [-16.5831 16.5831 -4.64576 4.64576] atol=1e-4
+    mechanism = hopper()
+    state = MechanismState(mechanism, x_fp[1:2], x_fp[3:4])
+    foot = findbody(mechanism, "foot")
+    contacts = [Point3D(default_frame(foot), SVector(0., 0, 0))]
+    K2, S2 = LCPSim.ContactLQR.contact_lqr(state, [0, -9.81], Q, 0.1 * eye(2), contacts)
 
-mechanism = hopper()
-state = MechanismState(mechanism, x_fp[1:2], x_fp[3:4])
-foot = findbody(mechanism, "foot")
-contacts = [Point3D(default_frame(foot), SVector(0., 0, 0))]
-K2 = LCPSim.ContactLQR.contact_lqr(state, [0, -9.81], Q, 0.1 * eye(2), contacts)
-
-@test K2[2, :] ≈ K[:]
+    @test K2[2, :] ≈ K[:]
+end
 
