@@ -76,10 +76,13 @@ by Jim Crist and other contributors.
 function lqr(A, B, Q, R)
     S = care(A, B, Q, R)
     K = R\B'*S
-    return K
+    return K, S
 end
 
 function contact_jacobian(state, contacts)
+    if isempty(contacts)
+        return zeros(0, num_positions(state))
+    end
     q = configuration(state)
     contact_jacobians = Matrix{eltype(q)}[]
     for contact in contacts
@@ -156,9 +159,10 @@ function contact_lqr(state::MechanismState, input::AbstractVector, Q::AbstractMa
     Bm = N' * B
     Rm = R
     Qm = N' * Q * N
-    Km = lqr(Am, Bm, Qm, Rm)
+    Km, Sm = lqr(Am, Bm, Qm, Rm)
     K = Km * N'
-    return K
+    S = N * Sm * N'
+    return K, S
 end
 
 
