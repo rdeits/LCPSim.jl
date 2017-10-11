@@ -63,8 +63,8 @@ srand(1)
         m = Model()
         @variable m q[1:num_positions(mechanism)]
         @variable m v[1:num_velocities(mechanism)]
-        setvalue(q, randn(q))
-        setvalue(v, randn(v))
+        setvalue(q, randn(length(q)))
+        setvalue(v, randn(length(v)))
         x_var = MechanismState(mechanism, q, v)
         x_linear = LinearizedState(x_var)
         @test current_configuration(x_linear) == getvalue(q)
