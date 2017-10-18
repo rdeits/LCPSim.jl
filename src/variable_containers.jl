@@ -13,15 +13,15 @@ struct JointLimitResult{T, M}
     direction::Vector{M}
 end
 
-struct LCPUpdate{T, M, I <:AbstractVector}
+struct LCPUpdate{T, M, U}
     state::StateRecord{T}
-    input::I
+    input::Vector{U}
     contacts::Dict{RigidBody{M}, Vector{ContactResult{T, M}}}
     joint_contacts::Dict{Joint, Vector{JointLimitResult{T, M}}}
 end
 
-LCPUpdate(state::StateRecord{T}, input::I, contacts::Associative{<:RigidBody{M}}, joint_contacts::Associative) where {T, M, I <: AbstractVector} = 
-    LCPUpdate{T, M, I}(state, input, contacts, joint_contacts)
+LCPUpdate(state::StateRecord{T}, input::AbstractVector{U}, contacts::Associative{<:RigidBody{M}}, joint_contacts::Associative) where {T, M, U} = 
+    LCPUpdate{T, M, U}(state, input, contacts, joint_contacts)
 
 _getvalue(x::AbstractVector{<:Number}) = x
 _getvalue(x::AbstractVector{<:AbstractJuMPScalar}) = getvalue(x)

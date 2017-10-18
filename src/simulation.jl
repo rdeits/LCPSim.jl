@@ -108,7 +108,7 @@ function simulate(x0::MechanismState{T, M},
     x = StateRecord(x0)
     xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
-    results = LCPUpdate{Float64, M, Vector{Float64}}[]
+    results = LCPUpdate{Float64, M, Float64}[]
     for i in 1:N
         m = Model(solver=solver)
         u = clamp.(controller(x), input_limits)
@@ -116,7 +116,7 @@ function simulate(x0::MechanismState{T, M},
         # xnext.linearization_state.q[1:4] = normalize(xnext.linearization_state.q[1:4])
         # x.configuration[1:4] = normalize(x.configuration[1:4])
         up = update(x, xnext, u, env, Δt, m)
-        status = solve(m)
+        status = solve(m; suppress_warnings=true)
         if status != :Optimal
             break
         end
