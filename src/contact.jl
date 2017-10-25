@@ -16,15 +16,15 @@ function separation(obs::Obstacle, p::Point3D)
     n.v' * p.v - obs.contact_face.β
 end
 
-_vec(f::FreeVector3D) = convert(Vector, f.v)
-_vec(p::Point3D) = convert(Vector, p.v)
-
 function contact_force(r::ContactResult)
     n = contact_normal(r.obs)
     D = contact_basis(r.obs)
     @framecheck(n.frame, D[1].frame)
-    # r.c_n * n .+ D * r.β
-    FreeVector3D(n.frame, r.c_n .* n.v .+ sum(broadcast.(*, _vec.(D), r.β)))
+    v = r.c_n .* n.v
+    for i in eachindex(r.β)
+        v += r.β[i] .* D[i].v
+    end
+    FreeVector3D(n.frame, v)
 end
 
 function add_contact_constraints(model::Model, point, obstacle, β, λ, c_n, D, separation_from_obstacle, contact_velocity)
