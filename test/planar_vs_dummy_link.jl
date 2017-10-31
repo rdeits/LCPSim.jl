@@ -2,6 +2,7 @@
 # x, y, θ base: an explicit Planar joint vs. two Prismatic joints and one Rotational
 # joint in series. 
 
+
 using LCPSim
 using Base.Test
 using RigidBodyDynamics
@@ -13,7 +14,9 @@ using Rotations: RotY
 const urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
 
 function box_with_planar_base()
+    @show urdf
     mechanism = parse_urdf(Float64, urdf)
+    @show mechanism
     core = findbody(mechanism, "core")
     fixed_joint = joint_to_parent(core, mechanism)
     floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint), 
@@ -31,7 +34,9 @@ function box_with_planar_base()
 end
 
 function box_with_dummy_links()
+    @show urdf
     urdf_mech = parse_urdf(Float64, urdf)
+    @show urdf_mech
     mechanism, base = planar_revolute_base()
     attach!(mechanism, base, urdf_mech)
 
