@@ -9,6 +9,7 @@ using RigidBodyDynamics
 using RigidBodyDynamics: Bounds
 using StaticArrays: SVector
 using Cbc: CbcSolver
+using Gurobi: GurobiSolver
 using Rotations: RotY
 
 const urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
@@ -77,8 +78,8 @@ end
     controller = x -> zeros(num_velocities(x))
     Δt = 0.01
     N = 30
-    results1 = LCPSim.simulate(x1, controller, env1, Δt, N, CbcSolver())
-    results2 = LCPSim.simulate(x2, controller, env2, Δt, N, CbcSolver())
+    results1 = LCPSim.simulate(x1, controller, env1, Δt, N, GurobiSolver())
+    results2 = LCPSim.simulate(x2, controller, env2, Δt, N, GurobiSolver())
 
     if Pkg.installed("RigidBodyTreeInspector") !== nothing
         @eval using RigidBodyTreeInspector
