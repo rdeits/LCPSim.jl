@@ -76,25 +76,22 @@ function update(x::StateRecord{X, M},
         end
     end
 
-    bias1 = linearized(dynamics_bias, xnext)
-    
-    # set x_dynamics gravity to 0, set velocity to 0
-    g_old = x_dynamics.mechanism.gravitational_acceleration
-    x_dynamics.mechanism.gravitational_acceleration = FreeVector3D(root_frame(x_dynamics.mechanism), 0., 0, 0)
-    v_old = copy(velocity(x_dynamics))
-    set_velocity!(x_dynamics, zeros(num_velocities(x_dynamics)))
-    bias2 = dynamics_bias(x_dynamics, externalwrenches)
+    bias_coriolis_gravity = linearized(dynamics_bias, xnext)
 
-    # restore gravity and velocity
-    x_dynamics.mechanism.gravitational_acceleration = g_old
-    set_velocity!(x_dynamics, v_old)
+    τ_external_wrenches = zeros(M, num_velocities(x_dynamics))
+    world = root_body(mechanism)
+    for (body, wrench) in externalwrenches
+        J = geometric_jacobian(x_dynamics, path(mechanism, body, world))
+        τ_external_wrenches += torque(J, wrench)
+    end
 
-    bias = bias1 + bias2
+    bias = bias_coriolis_gravity + τ_external_wrenches
 
     config_derivative = jac_dq_wrt_v * vnext
 
     H = mass_matrix(x_dynamics)
-    @constraint(model, H * (vnext - velocity(x)) .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)
+    HΔv = H * (vnext - velocity(x))
+    @constraint(model, HΔv .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)
     @constraint(model, qnext .- configuration(x) .== Δt .* config_derivative) # (6)
 
     LCPUpdate(StateRecord(mechanism, vcat(qnext, vnext)), u, contact_results, joint_limit_results)
