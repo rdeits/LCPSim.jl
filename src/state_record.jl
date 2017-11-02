@@ -1,10 +1,13 @@
 
-struct StateRecord{T, M, S <: SubArray{T}}
+const VectorView{T} = SubArray{T, 1, Vector{T}, Tuple{UnitRange{Int}}, true}
+@assert typeof(view(zeros(5), 1:3)) === VectorView{Float64}
+
+struct StateRecord{T, M}
     mechanism::Mechanism{M}
     state::Vector{T}
-    configuration::S
-    velocity::S
-    additional_state::S
+    configuration::VectorView{T}
+    velocity::VectorView{T}
+    additional_state::VectorView{T}
 
     function StateRecord{T}(mechanism::Mechanism{M}, state::AbstractVector{T}) where {T, M}
         c = view(state, 1:num_positions(mechanism))
