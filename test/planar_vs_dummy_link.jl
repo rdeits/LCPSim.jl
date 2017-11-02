@@ -2,18 +2,22 @@
 # x, y, θ base: an explicit Planar joint vs. two Prismatic joints and one Rotational
 # joint in series. 
 
+
 using LCPSim
 using Base.Test
 using RigidBodyDynamics
 using RigidBodyDynamics: Bounds
 using StaticArrays: SVector
 using Cbc: CbcSolver
+using Gurobi: GurobiSolver
 using Rotations: RotY
 
 const urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
 
 function box_with_planar_base()
+    @show urdf
     mechanism = parse_urdf(Float64, urdf)
+    @show mechanism
     core = findbody(mechanism, "core")
     fixed_joint = joint_to_parent(core, mechanism)
     floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint), 
@@ -31,7 +35,9 @@ function box_with_planar_base()
 end
 
 function box_with_dummy_links()
+    @show urdf
     urdf_mech = parse_urdf(Float64, urdf)
+    @show urdf_mech
     mechanism, base = planar_revolute_base()
     attach!(mechanism, base, urdf_mech)
 
@@ -62,6 +68,15 @@ function environment_with_floor(mechanism)
     env
 end
 
+function withenv(f::Function)
+    env = Gurobi.Env()
+    try
+        f(env)
+    finally
+        Gurobi.free_env(env)
+    end
+end
+
 @testset "planar vs dummy link brick" begin
     mech1, x1 = box_with_planar_base()
     env1 = environment_with_floor(mech1)
@@ -71,9 +86,13 @@ end
 
     controller = x -> zeros(num_velocities(x))
     Δt = 0.01
-    N = 30
-    results1 = LCPSim.simulate(x1, controller, env1, Δt, N, CbcSolver())
-    results2 = LCPSim.simulate(x2, controller, env2, Δt, N, CbcSolver())
+    N = 300
+    results1 = withenv() do env
+        LCPSim.simulate(x1, controller, env1, Δt, N, GurobiSolver(env, OutputFlag=0))
+    end
+    results2 = withenv() do env
+        LCPSim.simulate(x2, controller, env2, Δt, N, GurobiSolver(env, OutputFlag=0))
+    end
 
     if Pkg.installed("RigidBodyTreeInspector") !== nothing
         @eval using RigidBodyTreeInspector
@@ -99,7 +118,7 @@ end
     @test length(results1) == N
     @test length(results2) == N
 
-    for i in 1:N
+    for i in 1:30
         set_configuration!(x1, configuration(results1[i].state))
         set_velocity!(x1, velocity(results1[i].state))
         set_configuration!(x2, configuration(results2[i].state))

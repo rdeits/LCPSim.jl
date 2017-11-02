@@ -1,18 +1,31 @@
+const MAX_JOINT_FORCE = 200
 
-function resolve_joint_limit(xnext::LinearizedState, joint::Joint, a::AbstractVector, b::Number, model::Model)
-    λ = @variable(model, lowerbound=0, upperbound=200, basename="λ")
+generalized_force(r::JointLimitResult) = r.λ
+
+_lower(b::RigidBodyDynamics.Bounds) = b.lower
+_upper(b::RigidBodyDynamics.Bounds) = b.upper
+
+function resolve_joint_limit(model::Model, xnext::LinearizedState, joint::Joint)
+    bounds = RigidBodyDynamics.position_bounds(joint)
+    N = length(bounds)
+    lb = _lower.(bounds)
+    ub = _upper.(bounds)
+
+    λ = @variable(model, [1:N], 
+                  lowerbound=-MAX_JOINT_FORCE, 
+                  upperbound=MAX_JOINT_FORCE, 
+                  basename="λ")
     q = current_configuration(xnext, joint)
-    separation = a' * q - b
-    @constraint model separation <= 0
-    @disjunction(model, separation == 0, λ == 0)
 
-    JointLimitResult(λ, -a)
+    @constraints model begin
+        [i=1:N], q[i] >= lb[i]
+        [i=1:N], q[i] <= ub[i]
+    end
+
+    for i in 1:length(λ)
+        @disjunction(model, (q[i] >= ub[i]), (λ[i] >= 0))
+        @disjunction(model, (q[i] <= lb[i]), (λ[i] <= 0))
+    end
+
+    JointLimitResult(λ)
 end
-
-function resolve_joint_limits(xnext::LinearizedState, joint::Joint, model::Model)
-    A = vcat(eye(num_positions(joint)), -eye(num_positions(joint)))
-    b = vcat(upper.(position_bounds(joint)), .-lower.(position_bounds(joint)))
-    [resolve_joint_limit(xnext, joint, A[i, :], b[i], model) for i in 1:size(A, 1)]
-end
-
-generalized_force(r::JointLimitResult) = r.λ * r.direction

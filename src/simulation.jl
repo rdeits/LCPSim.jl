@@ -47,44 +47,51 @@ function update(x::StateRecord{X, M},
         end
     end
 
-    externalwrenches = map(contact_results) do item
-        body, results = item
-        body => sum([Wrench(transform_to_root(x_dynamics, result.point.frame) * result.point,
-                    contact_force(result)) for result in results])
-    end
-
-    jac_dq_wrt_v = Linear.jacobian(configuration_derivative, xnext)[:, length(qnext) + 1:end]
-
-    joint_limit_results::Dict{Joint, Vector{JointLimitResult{Variable, M}}} = 
-        Dict([joint => resolve_joint_limits(xnext, joint, model) for joint in joints(mechanism)])
-
-    joint_limit_forces = zeros(GenericAffExpr{M, Variable}, num_velocities(x))
-    for (joint, results) in joint_limit_results
+    externalwrenches = Dict{RigidBody{M}, Wrench{GenericAffExpr{M, Variable}}}()
+    for (body, results) in contact_results
         for result in results
-            joint_limit_forces .+= (jac_dq_wrt_v')[:, parentindexes(configuration(xnext.dual_state, joint))...] * generalized_force(result)
+            c = contact_force(result)
+            t = transform_to_root(x_dynamics, result.point.frame)
+            pt = t * result.point
+            w = Wrench(pt, c)
+            # w = Wrench(transform_to_root(x_dynamics, result.point.frame) * result.point, c)
+            if haskey(externalwrenches, body)
+                externalwrenches[body] += w
+            else
+                externalwrenches[body] = w
+            end
         end
     end
 
-    H = mass_matrix(x_dynamics)
+    joint_limit_results = [resolve_joint_limit(model, xnext, joint) for joint in joints(mechanism)]
+    joint_limit_forces = zeros(GenericAffExpr{M, Variable}, num_velocities(x))
 
-    bias1 = linearized(dynamics_bias, xnext)
-    
-    # set x_dynamics gravity to 0, set velocity to 0
-    g_old = x_dynamics.mechanism.gravitational_acceleration
-    x_dynamics.mechanism.gravitational_acceleration = FreeVector3D(root_frame(x_dynamics.mechanism), 0., 0, 0)
-    v_old = copy(velocity(x_dynamics))
-    set_velocity!(x_dynamics, zeros(num_velocities(x_dynamics)))
-    bias2 = dynamics_bias(x_dynamics, externalwrenches)
+    jac_dq_wrt_v = Linear.jacobian(configuration_derivative, xnext)[:, length(qnext) + 1:end]
+    jac_v_wrt_dq = jac_dq_wrt_v'
+    for (i, joint) in enumerate(joints(mechanism))
+        vrange = velocity_range(x_dynamics, joint)
+        crange = configuration_range(x_dynamics, joint)
+        @views begin
+            joint_limit_forces[vrange] .+= jac_v_wrt_dq[vrange, crange] * generalized_force(joint_limit_results[i])
+        end
+    end
 
-    # restore gravity and velocity
-    x_dynamics.mechanism.gravitational_acceleration = g_old
-    set_velocity!(x_dynamics, v_old)
+    bias_coriolis_gravity = linearized(dynamics_bias, xnext)
 
-    bias = bias1 + bias2
+    τ_external_wrenches = zeros(M, num_velocities(x_dynamics))
+    world = root_body(mechanism)
+    for (body, wrench) in externalwrenches
+        J = geometric_jacobian(x_dynamics, path(mechanism, body, world))
+        τ_external_wrenches += torque(J, wrench)
+    end
+
+    bias = bias_coriolis_gravity + τ_external_wrenches
 
     config_derivative = jac_dq_wrt_v * vnext
 
-    @constraint(model, H * (vnext - velocity(x)) .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)
+    H = mass_matrix(x_dynamics)
+    HΔv = H * (vnext - velocity(x))
+    @constraint(model, HΔv .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)
     @constraint(model, qnext .- configuration(x) .== Δt .* config_derivative) # (6)
 
     LCPUpdate(StateRecord(mechanism, vcat(qnext, vnext)), u, contact_results, joint_limit_results)
@@ -104,15 +111,19 @@ function simulate(x0::MechanismState{T, M},
                   env::Environment, 
                   Δt::Real, 
                   N::Integer,
-                  solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver) where {T, M}
+                  solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver;
+                  termination::Function = state -> false) where {T, M}
     x = StateRecord(x0)
     xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
     results = LCPUpdate{Float64, M, Float64}[]
+    u = clamp.(controller(x), input_limits)
     for i in 1:N
         m = Model(solver=solver)
-        u = clamp.(controller(x), input_limits)
         semi_implicit_update!(xnext, x, Δt)
+        if i > 1
+            u .= clamp.(controller(x), input_limits)
+        end
         # xnext.linearization_state.q[1:4] = normalize(xnext.linearization_state.q[1:4])
         # x.configuration[1:4] = normalize(x.configuration[1:4])
         up = update(x, xnext, u, env, Δt, m)
@@ -122,6 +133,9 @@ function simulate(x0::MechanismState{T, M},
         end
         update_value = getvalue(up)
         x = update_value.state
+        if termination(x)
+            break
+        end
         push!(results, update_value)
     end
     results
