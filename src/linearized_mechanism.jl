@@ -17,12 +17,12 @@ module Linear
            linearization_state,
            linearized
 
-    struct LinearizedState{T, SCurrent <: StateRecord{T}, SLinear <: MechanismState{<:Number}, SDual <: MechanismState{<:ForwardDiff.Dual}}
-        current_state::SCurrent
+    struct LinearizedState{T, M, SLinear <: MechanismState{<:Number}, SDual <: MechanismState{<:ForwardDiff.Dual}}
+        current_state::StateRecord{T, M}
         linearization_state::SLinear
         dual_state::SDual
 
-        function LinearizedState{T}(linear::S) where {T, S <: MechanismState{<:Number}}
+        function LinearizedState{T}(linear::S) where {T, M, S <: MechanismState{<:Number, M}}
             mechanism = linear.mechanism
             nq = num_positions(mechanism)
             nv = num_velocities(mechanism)
@@ -33,7 +33,7 @@ module Linear
             ForwardDiff.seed!(xdiff, state_vector(linear), ForwardDiff.construct_seeds(ForwardDiff.Partials{N, Float64}))
             diffstate = MechanismState(mechanism, xdiff[1:nq], xdiff[nq + (1:nv)], xdiff[nq + nv + (1:na)])
             current = StateRecord(mechanism, Vector{T}(N))
-            new{T, typeof(current), S, typeof(diffstate)}(StateRecord(mechanism, Vector{T}(N)),
+            new{T, M, S, typeof(diffstate)}(StateRecord(mechanism, Vector{T}(N)),
                                          linear,
                                          diffstate)
         end

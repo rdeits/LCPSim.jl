@@ -14,7 +14,7 @@ struct JointLimitResult{T}
 end
 
 struct LCPUpdate{T, M, U}
-    state::StateRecord{T}
+    state::StateRecord{T, M}
     input::Vector{U}
     contacts::Dict{RigidBody{M}, Vector{ContactResult{T, M}}}
     joint_contacts::Vector{JointLimitResult{T}}
