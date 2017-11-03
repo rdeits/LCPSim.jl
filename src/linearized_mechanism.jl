@@ -4,7 +4,7 @@ module Linear
     using RigidBodyDynamics
     import RigidBodyDynamics: configuration, velocity
     using ForwardDiff
-    using JuMP: AbstractJuMPScalar, getvalue
+    using JuMP: AbstractJuMPScalar, getvalue, Variable, AffExpr
     using LCPSim: StateRecord
 
     export set_current_configuration!,
@@ -110,4 +110,38 @@ module Linear
         ForwardDiff.extract_jacobian!(J, ydual, nx)
         J
     end
+
+    function linearized(f::Function, s::LinearizedState{Variable}, min_coefficient=1e-15)
+        wrapper, ydual = unwrap(f(s.dual_state))
+        nx = length(state_vector(current_state(s)))
+        v = ForwardDiff.value.(ydual)
+        x_current = state_vector(current_state(s))
+        x_linear = state_vector(linearization_state(s))
+        
+        if isa(v, AbstractArray)
+            J = similar(v, (length(v), nx))
+            ForwardDiff.extract_jacobian!(J, ydual, nx)
+            result = AffExpr.(v)
+            for i in 1:length(v)
+                for j in 1:length(x_current)
+                    if abs(J[i, j]) >= min_coefficient
+                        push!(result[i], J[i, j], x_current[j])
+                        result[i].constant -= J[i, j] * x_linear[j]
+                    end
+                end
+            end
+            wrapper(result)
+        else
+            result = AffExpr(v)
+            partials = ForwardDiff.partials(ydual)
+            for j in 1:length(x_current)
+                if abs(partials[j]) >= min_coefficient
+                    push!(result, partials[j], x_current[j])
+                    result.constant -= partials[j] * x_linear[j]
+                end
+            end
+            wrapper(result)
+        end 
+    end
+
 end

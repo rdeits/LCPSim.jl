@@ -78,15 +78,14 @@ function update(x::StateRecord{X, M},
 
     bias_coriolis_gravity = linearized(dynamics_bias, xnext)
 
-    τ_external_wrenches = zeros(M, num_velocities(x_dynamics))
+    τ_external_wrenches = zeros(GenericAffExpr{M, Variable}, num_velocities(x_dynamics))
     world = root_body(mechanism)
     for (body, wrench) in externalwrenches
         J = geometric_jacobian(x_dynamics, path(mechanism, body, world))
-        τ_external_wrenches += torque(J, wrench)
+        τ_external_wrenches .+= torque(J, wrench)
     end
 
     bias = bias_coriolis_gravity + τ_external_wrenches
-
     config_derivative = jac_dq_wrt_v * vnext
 
     H = mass_matrix(x_dynamics)
@@ -127,6 +126,10 @@ function simulate(x0::MechanismState{T, M},
         # xnext.linearization_state.q[1:4] = normalize(xnext.linearization_state.q[1:4])
         # x.configuration[1:4] = normalize(x.configuration[1:4])
         up = update(x, xnext, u, env, Δt, m)
+        if i > 1
+            setvalue(up, results[end])
+            ConditionalJuMP.warmstart!(m, false)
+        end
         status = solve(m; suppress_warnings=true)
         if status != :Optimal
             break

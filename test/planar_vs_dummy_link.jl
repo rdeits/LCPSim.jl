@@ -86,7 +86,7 @@ end
 
     controller = x -> zeros(num_velocities(x))
     Δt = 0.01
-    N = 300
+    N = 600
     results1 = withenv() do env
         LCPSim.simulate(x1, controller, env1, Δt, N, GurobiSolver(env, OutputFlag=0))
     end

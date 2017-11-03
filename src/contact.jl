@@ -23,6 +23,21 @@ function separation(obs::Obstacle, p::Point3D)
     n.v' * p.v - obs.contact_face.β
 end
 
+function contact_force(r::ContactResult{<:JuMP.AbstractJuMPScalar})
+    n = contact_normal(r.obs)
+    D = contact_basis(r.obs)
+    @framecheck(n.frame, D[1].frame)
+    v = r.c_n .* n.v
+    for i in eachindex(r.β)
+        di = D[i].v
+        for j in 1:length(di)
+            append!(v[j], r.β[i] * di[j])
+        end
+    end
+    FreeVector3D(n.frame, v)
+end
+
+
 function contact_force(r::ContactResult)
     n = contact_normal(r.obs)
     D = contact_basis(r.obs)

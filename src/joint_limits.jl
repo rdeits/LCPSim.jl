@@ -14,7 +14,7 @@ function resolve_joint_limit(model::Model, xnext::LinearizedState, joint::Joint)
     λ = @variable(model, [1:N], 
                   lowerbound=-MAX_JOINT_FORCE, 
                   upperbound=MAX_JOINT_FORCE, 
-                  basename="λ")
+                  basename="{λ_{joint}}")
     q = current_configuration(xnext, joint)
 
     @constraints model begin
