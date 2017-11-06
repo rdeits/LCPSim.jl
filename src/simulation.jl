@@ -1,12 +1,12 @@
 using RigidBodyDynamics: Bounds, upper, lower
 
-all_configuration_bounds(m::Mechanism) = 
+all_configuration_bounds(m::Mechanism) =
     collect(Base.Iterators.flatten(map(position_bounds, joints(m))))
 
-all_velocity_bounds(m::Mechanism) = 
+all_velocity_bounds(m::Mechanism) =
     collect(Base.Iterators.flatten(map(velocity_bounds, joints(m))))
 
-all_effort_bounds(m::Mechanism) = 
+all_effort_bounds(m::Mechanism) =
     collect(Base.Iterators.flatten(map(effort_bounds, joints(m))))
 
 function setbounds(x::Variable, b::Bounds)
@@ -105,10 +105,10 @@ function semi_implicit_update!(xnext::LinearizedState, x::StateRecord, Δt)
     set_linearization_configuration!(xnext, qnext)
 end
 
-function simulate(x0::MechanismState{T, M}, 
-                  controller, 
-                  env::Environment, 
-                  Δt::Real, 
+function simulate(x0::MechanismState{T, M},
+                  controller,
+                  env::Environment,
+                  Δt::Real,
                   N::Integer,
                   solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver;
                   termination::Function = state -> false) where {T, M}
@@ -150,8 +150,8 @@ function fix_if_tightly_bounded(x::Variable)
     end
 end
 
-function optimize(x0::MechanismState, 
-                  env::Environment, 
+function optimize(x0::MechanismState,
+                  env::Environment,
                   Δt,
                   N::Integer,
                   m::Model=Model())
@@ -189,6 +189,7 @@ function optimize(x0::MechanismState,
         up
     end
     setvalue.(results, seed)
+    ConditionalJuMP.warmstart!(m, false)
     m, results
 end
-    
+
