@@ -79,6 +79,67 @@ function lqr(A, B, Q, R)
     return K, S
 end
 
+"""
+    `dare(A, B, Q, R)`
+
+Compute `X`, the solution to the discrete-time algebraic Riccati equation,
+defined as A'XA - X - (A'XB)(B'XB + R)^-1(B'XA) + Q = 0, where A and R
+are non-singular.
+
+Algorithm taken from:
+Laub, "A Schur Method for Solving Algebraic Riccati Equations."
+http://dspace.mit.edu/bitstream/handle/1721.1/1301/R-0859-05666488.pdf
+
+Implementation from https://github.com/JuliaControl/ControlSystems.jl/blob/master/src/matrix_comps.jl
+by Jim Crist and other contributors. 
+"""
+function dare(A, B, Q, R)
+    G = try
+        B*inv(R)*B'
+    catch
+        error("R must be non-singular.")
+    end
+
+    Ait = try
+        inv(A)'
+    catch
+        error("A must be non-singular.")
+    end
+
+    Z = [A + G*Ait*Q   -G*Ait;
+         -Ait*Q        Ait]
+
+    S = schurfact(Z)
+    S = ordschur(S, abs.(S.values).<=1)
+    U = S.Z
+
+    (m, n) = size(U)
+    U11 = U[1:div(m, 2), 1:div(n,2)]
+    U21 = U[div(m,2)+1:m, 1:div(n,2)]
+    return U21/U11
+end
+
+"""
+    `dlqr(A, B, Q, R)`
+
+Calculate the optimal gain matrix `K` for the state-feedback law `u[k] = K*x[k]` that
+minimizes the cost function:
+
+J = sum(x'Qx + u'Ru, 0, inf).
+
+For the discrete time model `x[k+1] = Ax[k] + Bu[k]`.
+
+Implementation from https://github.com/JuliaControl/ControlSystems.jl/blob/master/src/synthesis.jl
+by Jim Crist and other contributors.
+```
+"""
+function dlqr(A, B, Q, R)
+    S = dare(A, B, Q, R)
+    K = (B'*S*B + R)\(B'S*A)
+    return K, S
+end
+
+
 function contact_jacobian(state, contacts)
     if isempty(contacts)
         return zeros(0, num_positions(state))
@@ -148,12 +209,39 @@ function contact_linearize(state0, input0, Jc)
 end
 
 """
+    A_d, B_d, c_d = zero_order_hold(A, B, c, Δt)
+
+Discretize the continuous-time linear system:
+
+    ẋ = Ax + Bu + c
+
+into the discrete-time linear system:
+
+    x[i+1] = Ax[i] + Bu[i] + c
+
+using a zero-order (piecewise constant) hold on u(t) with discretization
+interval Δt.
+"""
+function zero_order_hold(A, B, c, Δt)
+    nx = size(A, 1)
+    nu = size(B, 2)
+    matc = zeros(nx + nu + 1, nx + nu + 1)
+    matc[1:nx, :] = hcat(A, B, c)
+    matd = expm(matc * Δt)
+    A_d = matd[1:nx, 1:nx]
+    B_d = matd[1:nx, nx + (1:nu)]
+    c_d = matd[1:nx, nx + nu + 1]
+    A_d, B_d, c_d
+end
+
+"""
 From "Balancing and Walking Using Full Dynamics LQR Control With Contact
 Constraints" by Sean Mason et al.
 """
 function contact_lqr(state::MechanismState, input::AbstractVector, Q::AbstractMatrix, R::AbstractMatrix, contacts::AbstractVector{<:Point3D})
     Jc = contact_jacobian(state, contacts)
     A, B, c = contact_linearize(state, input, Jc)
+    A[abs.(A) .< 1e-6] .= 0
     N = nullspace([Jc zeros(Jc); zeros(Jc) Jc])
     Am = N' * A * N
     Bm = N' * B
@@ -165,5 +253,20 @@ function contact_lqr(state::MechanismState, input::AbstractVector, Q::AbstractMa
     return K, S
 end
 
+function contact_dlqr(state::MechanismState, input::AbstractVector, Q::AbstractMatrix, R::AbstractMatrix, contacts::AbstractVector{<:Point3D}, Δt)
+    Jc = contact_jacobian(state, contacts)
+    A, B, c = contact_linearize(state, input, Jc)
+    A[abs.(A) .< 1e-6] .= 0
+    N = nullspace([Jc zeros(Jc); zeros(Jc) Jc])
+    Am = N' * A * N
+    Bm = N' * B
+    Rm = R
+    Qm = N' * Q * N
+    Am_d, Bm_d, cm_d = zero_order_hold(Am, Bm, zeros(size(Am, 1)), Δt)
+    Km_d, Sm_d = dlqr(Am_d, Bm_d, Qm, Rm)
+    K_d = Km_d * N'
+    S_d = N * Sm_d * N'
+    return K_d, S_d
+end
 
 end
