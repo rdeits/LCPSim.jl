@@ -111,20 +111,18 @@ function simulate(x0::MechanismState{T, M},
                   Δt::Real,
                   N::Integer,
                   solver::JuMP.MathProgBase.SolverInterface.AbstractMathProgSolver;
-                  termination::Function = state -> false) where {T, M}
+                  termination::Function = state -> false,
+                  relinearize=true) where {T, M}
     x = StateRecord(x0)
     xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
     results = LCPUpdate{Float64, M, Float64}[]
-    u = clamp.(controller(x), input_limits)
     for i in 1:N
         m = Model(solver=solver)
-        semi_implicit_update!(xnext, x, Δt)
-        if i > 1
-            u .= clamp.(controller(x), input_limits)
+        if relinearize
+            semi_implicit_update!(xnext, x, Δt)
         end
-        # xnext.linearization_state.q[1:4] = normalize(xnext.linearization_state.q[1:4])
-        # x.configuration[1:4] = normalize(x.configuration[1:4])
+        u = clamp.(controller(x), input_limits)
         up = update(x, xnext, u, env, Δt, m)
         if i > 1
             setvalue(up, results[end])
