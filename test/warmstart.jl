@@ -11,7 +11,6 @@ urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
 
 function box_with_planar_base()
     mechanism = parse_urdf(Float64, urdf)
-    @show mechanism
     core = findbody(mechanism, "core")
     fixed_joint = joint_to_parent(core, mechanism)
     floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint), 
