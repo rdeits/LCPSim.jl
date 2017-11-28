@@ -7,7 +7,7 @@ using StaticArrays: SVector
 using Gurobi: GurobiSolver
 using Rotations: RotY
 
-const urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
+urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
 
 function inclined_brick(θ)
     mechanism = parse_urdf(Float64, urdf)

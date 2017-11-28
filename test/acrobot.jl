@@ -94,7 +94,7 @@ K = lqr(A, B, Q, R)
 =#
 
 K = [0.0 0.0 0.0 0.0; -266.087 -107.349 -114.95 -54.3175]
-const urdf = joinpath(@__DIR__, "..", "examples", "Acrobot.urdf")
+urdf = joinpath(@__DIR__, "..", "examples", "Acrobot.urdf")
 mechanism = parse_urdf(Float64, urdf)
 world = root_body(mechanism)
 env = Environment{Float64}(Dict())

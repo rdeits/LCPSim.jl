@@ -56,7 +56,7 @@ function update(x::StateRecord{X, M},
             pt = t * result.point
             w = Wrench(pt, c)
 
-            nominal_weight = mass(mechanism) * norm(mechanism.gravitational_acceleration.v) / length(contact_results)
+            nominal_weight = mass(mechanism) * norm(mechanism.gravitational_acceleration.v) / length(contact_results) / length(results)
             nominal_force = FreeVector3D(result.obs.frame,
                 nominal_weight * result.obs.contact_face.a)
             @framecheck result.Δr.frame default_frame(world)
