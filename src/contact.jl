@@ -1,15 +1,19 @@
 
 function contact_basis(obs::Obstacle{T}) where T
     a::SVector{3,T} = normalize(SVector{3, T}(obs.contact_face.a))
-    R = Rotations.rotation_between(SVector{3, T}(0, 0, 1), a)
-    D = SVector{4}([
-        FreeVector3D(obs.frame, R * RotZ(θ) * SVector(1, 0, 0))
-        for θ in 0:π/2:3π/2])
+    D = SVector{2}([
+        FreeVector3D(obs.frame, Rotations.RotY(π/2) * a),
+        FreeVector3D(obs.frame, Rotations.RotY(-π/2) * a)
+        ])
+    # R = Rotations.rotation_between(SVector{3, T}(0, 0, 1), a)
+    # D = SVector{4}([
+    #     FreeVector3D(obs.frame, R * RotZ(θ) * SVector(1, 0, 0))
+    #     for θ in 0:π/2:3π/2])
     for i in 1:length(D)
         @assert isapprox(dot(D[i].v, obs.contact_face.a), 0, atol=1e-15)
-        if i > 1
-            @assert isapprox(dot(D[i].v, D[i-1].v), 0, atol=1e-15)
-        end
+        # if i > 1
+        #     @assert isapprox(dot(D[i].v, D[i-1].v), 0, atol=1e-15)
+        # end
     end
     D
 end
