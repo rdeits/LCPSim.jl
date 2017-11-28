@@ -47,6 +47,7 @@ function update(x::StateRecord{X, M},
         end
     end
 
+    world = root_body(mechanism)
     externalwrenches = Dict{RigidBody{M}, Wrench{GenericAffExpr{M, Variable}}}()
     for (body, results) in contact_results
         for result in results
@@ -54,11 +55,23 @@ function update(x::StateRecord{X, M},
             t = transform_to_root(x_dynamics, result.point.frame)
             pt = t * result.point
             w = Wrench(pt, c)
-            # w = Wrench(transform_to_root(x_dynamics, result.point.frame) * result.point, c)
+
+            nominal_weight = mass(mechanism) * norm(mechanism.gravitational_acceleration.v) / length(contact_results)
+            nominal_force = FreeVector3D(result.obs.frame,
+                nominal_weight * result.obs.contact_face.a)
+            @framecheck result.Δr.frame default_frame(world)
+            @framecheck nominal_force.frame default_frame(world)
+            angular = cross(result.Δr, nominal_force)
+            linear = zero(angular)
+            corrective_wrench = Wrench(default_frame(world),
+                angular.v, linear.v)
+            wtotal = w + corrective_wrench
+            # wtotal = w
+
             if haskey(externalwrenches, body)
-                externalwrenches[body] += w
+                externalwrenches[body] += wtotal
             else
-                externalwrenches[body] = w
+                externalwrenches[body] = wtotal
             end
         end
     end
@@ -79,7 +92,6 @@ function update(x::StateRecord{X, M},
     bias_coriolis_gravity = linearized(dynamics_bias, xnext)
 
     τ_external_wrenches = zeros(GenericAffExpr{M, Variable}, num_velocities(x_dynamics))
-    world = root_body(mechanism)
     for (body, wrench) in externalwrenches
         J = geometric_jacobian(x_dynamics, path(mechanism, body, world))
         τ_external_wrenches .+= torque(J, wrench)

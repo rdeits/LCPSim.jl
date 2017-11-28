@@ -58,7 +58,7 @@ function append(v::AbstractVector{T}, x::T) where T
     result
 end
 
-function add_contact_constraints(model::Model, point, obstacle, β, λ, c_n, D_transpose_times_v, separation_from_obstacle)
+function add_contact_constraints(model::Model, point, obstacle, β, λ, c_n, D_transpose_times_v, separation_from_obstacle, Δr, Δr_true)
 
     @constraints model begin
         separation_from_obstacle >= 0 # (7)
@@ -69,7 +69,10 @@ function add_contact_constraints(model::Model, point, obstacle, β, λ, c_n, D_t
         @constraint model λ + d >= 0 # (8)
     end
 
-    @disjunction(model, (separation_from_obstacle <= 1e-3), (c_n == 0)) # (10)
+    @disjunction(model, 
+        ((separation_from_obstacle <= 1e-3) & (Δr.v .== Δr_true.v)),
+        ((c_n == 0) & (Δr.v .== 0))
+    ) # (10)
     for j in 1:length(D_transpose_times_v)
         d = D_transpose_times_v[j]
         λ_plus_d = AffExpr(append(d.vars, λ), append(d.coeffs, 1.0), d.constant)
@@ -77,7 +80,7 @@ function add_contact_constraints(model::Model, point, obstacle, β, λ, c_n, D_t
     end
     @disjunction(model, (obstacle.μ * c_n - sum(β) == 0), (λ == 0)) # (12)
 
-    ContactResult(β, λ, c_n, point, obstacle)
+    ContactResult(β, λ, c_n, Δr, point, obstacle)
 end
 
 function resolve_contact(xnext::LinearizedState, body::RigidBody, point::Point3D, obstacle::Obstacle, model::Model)
@@ -85,6 +88,12 @@ function resolve_contact(xnext::LinearizedState, body::RigidBody, point::Point3D
     β   = @variable(model, [1:length(D)], lowerbound=0, basename="β", upperbound=1000)
     λ   = @variable(model, lowerbound=0, basename="λ", upperbound=1000)
     c_n = @variable(model, lowerbound=0, basename="c_n", upperbound=1000)
+    world = default_frame(root_body(linearization_state(xnext).mechanism))
+    Δr = FreeVector3D(world, SVector{3, Variable}(@variable(model, [1:3], lowerbound=-10, upperbound=10, basename="Δr")))
+
+    Δr_true = linearized(xnext) do x
+        (transform_to_root(x, point.frame) * point - center_of_mass(x))
+    end - (transform_to_root(linearization_state(xnext), point.frame) * point - center_of_mass(linearization_state(xnext)))
 
     separation_from_obstacle = linearized(xnext) do x
         separation(obstacle, transform_to_root(x, point.frame) * point)
@@ -99,7 +108,7 @@ function resolve_contact(xnext::LinearizedState, body::RigidBody, point::Point3D
         linearized(x -> dot(d, point_velocity(twist_wrt_world(x, body), transform_to_root(linearization_state(xnext), point.frame) * point)), xnext) for d in D
         ]
 
-    add_contact_constraints(model, point, obstacle, β, λ, c_n, D_transpose_times_v, separation_from_obstacle)
+    add_contact_constraints(model, point, obstacle, β, λ, c_n, D_transpose_times_v, separation_from_obstacle, Δr, Δr_true)
 end
 
 function add_contact_constraints_nonsliding(model::Model, point, obstacle, β, λ, c_n, D, separation_from_obstacle, contact_velocity)
