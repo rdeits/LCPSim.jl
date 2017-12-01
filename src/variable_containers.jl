@@ -24,19 +24,24 @@ end
 LCPUpdate(state::StateRecord{T}, input::AbstractVector{U}, contacts::Associative{<:RigidBody{M}}, joint_contacts::Associative) where {T, M, U} =
     LCPUpdate{T, M, U}(state, input, contacts, joint_contacts)
 
-_getvalue(x::AbstractVector{<:Number}) = x
-_getvalue(x::AbstractVector{<:AbstractJuMPScalar}) = getvalue(x)
+_getvalue(x::Variable) = JuMP._getValue(x)
+_getvalue(x::Number) = x
+_getvalue(f::FreeVector3D) = FreeVector3D(f.frame, _getvalue.(f.v))
 
 
-JuMP.getvalue(r::JointLimitResult) = JointLimitResult(getvalue.(r.λ))
-JuMP.getvalue(r::StateRecord{<:AbstractJuMPScalar}) = StateRecord(r.mechanism, getvalue.(r.state))
+JuMP.getvalue(r::JointLimitResult) = JointLimitResult(_getvalue.(r.λ))
+JuMP.getvalue(r::StateRecord{<:AbstractJuMPScalar}) = StateRecord(r.mechanism, _getvalue.(r.state))
 JuMP.getvalue(up::LCPUpdate) =
     LCPUpdate(getvalue(up.state),
-              _getvalue(up.input),
+              _getvalue.(up.input),
               Dict([k => getvalue.(v) for (k, v) in up.contacts]),
               getvalue.(up.joint_contacts))
-JuMP.getvalue(f::FreeVector3D) = FreeVector3D(f.frame, getvalue(f.v))
-JuMP.getvalue(c::ContactResult) = ContactResult(getvalue.((c.β, c.λ, c.c_n, c.Δr))..., c.point, c.obs)
+JuMP.getvalue(c::ContactResult) = ContactResult(_getvalue.(c.β),
+                                                _getvalue(c.λ),
+                                                _getvalue(c.c_n),
+                                                _getvalue(c.Δr),
+                                                c.point,
+                                                c.obs)
 
 function JuMP.setvalue(r::JointLimitResult{<:AbstractJuMPScalar}, seed::JointLimitResult{<:Number})
     setvalue.(r.λ, seed.λ)
