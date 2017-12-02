@@ -1,20 +1,22 @@
 const MAX_JOINT_FORCE = 200
 
-generalized_force(r::JointLimitResult) = r.λ
+generalized_force(r::JointLimitResult) = r.λ * r.scaling
 
 _lower(b::RigidBodyDynamics.Bounds) = b.lower
 _upper(b::RigidBodyDynamics.Bounds) = b.upper
 
 function resolve_joint_limit(model::Model, xnext::LinearizedState, joint::Joint)
+    mechanism = xnext.linearization_state.mechanism
+    total_weight = mass(mechanism) * norm(mechanism.gravitational_acceleration)
     bounds = RigidBodyDynamics.position_bounds(joint)
     N = length(bounds)
     if N > 0
         lb = _lower.(bounds)
         ub = _upper.(bounds)
 
-        λ = @variable(model, [1:N], 
-                      lowerbound=-MAX_JOINT_FORCE, 
-                      upperbound=MAX_JOINT_FORCE, 
+        λ = @variable(model, [1:N],
+                      lowerbound=-MAX_JOINT_FORCE,
+                      upperbound=MAX_JOINT_FORCE,
                       basename="{λ_{joint}}")
         q = current_configuration(xnext, joint)
 
@@ -28,8 +30,8 @@ function resolve_joint_limit(model::Model, xnext::LinearizedState, joint::Joint)
             @disjunction(model, (q[i] <= lb[i]), (λ[i] <= 0))
         end
 
-        JointLimitResult(λ)
+        JointLimitResult(λ, total_weight)
     else
-        JointLimitResult(Vector{Variable}())
+        JointLimitResult(Vector{Variable}(), total_weight)
     end
 end

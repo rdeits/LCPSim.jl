@@ -14,7 +14,7 @@ Laub, "A Schur Method for Solving Algebraic Riccati Equations."
 http://dspace.mit.edu/bitstream/handle/1721.1/1301/R-0859-05666488.pdf
 
 Implementation from https://github.com/JuliaControl/ControlSystems.jl/blob/master/src/matrix_comps.jl
-by Jim Crist and other contributors. 
+by Jim Crist and other contributors.
 """
 function care(A, B, Q, R)
     G = try
@@ -91,7 +91,7 @@ Laub, "A Schur Method for Solving Algebraic Riccati Equations."
 http://dspace.mit.edu/bitstream/handle/1721.1/1301/R-0859-05666488.pdf
 
 Implementation from https://github.com/JuliaControl/ControlSystems.jl/blob/master/src/matrix_comps.jl
-by Jim Crist and other contributors. 
+by Jim Crist and other contributors.
 """
 function dare(A, B, Q, R)
     G = try
@@ -191,14 +191,14 @@ function contact_linearize(state0, input0, Jc)
         error("Only static postures supported")
     end
     mechanism = state0.mechanism
-    
+
     function dynamics(x, u)
         q = x[1:num_positions(state0)]
         v = x[num_positions(state0) + 1 : end]
         state = MechanismState(mechanism, q, v)
         dynamics_with_contact_constraint(state, u, Jc)
     end
-    
+
     A = ForwardDiff.jacobian(state_vector(state0)) do x
         dynamics(x, input0)
     end
@@ -253,7 +253,7 @@ function contact_lqr(state::MechanismState, input::AbstractVector, Q::AbstractMa
     return K, S
 end
 
-function contact_dlqr(state::MechanismState, input::AbstractVector, Q::AbstractMatrix, R::AbstractMatrix, contacts::AbstractVector{<:Point3D}, Δt)
+function contact_dlqr(state::MechanismState, input::AbstractVector, Q::AbstractMatrix, R::AbstractMatrix, Δt, contacts::AbstractVector{<:Point3D}=[])
     Jc = contact_jacobian(state, contacts)
     A, B, c = contact_linearize(state, input, Jc)
     A[abs.(A) .< 1e-6] .= 0

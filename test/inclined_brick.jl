@@ -13,7 +13,7 @@ function inclined_brick(θ)
     mechanism = parse_urdf(Float64, urdf)
     core = findbody(mechanism, "core")
     fixed_joint = joint_to_parent(core, mechanism)
-    floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint), 
+    floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint),
                           Planar([1., 0, 0], [0., 0, 1.]),
                           position_bounds=[Bounds(-5., 5), Bounds(0., 3), Bounds(-2π, 2π)],
                           velocity_bounds=[Bounds(-10., 10), Bounds(-10., 10), Bounds(-2π, 2π)],
@@ -48,30 +48,34 @@ end
     # slide at all
     mechanism, env, x1 = inclined_brick(π/4 - 0.1)
     Δt = 0.05
+    N = 50
     controller = x -> zeros(num_velocities(x))
+
     q0 = copy(configuration(x1))
-    results_stick = LCPSim.simulate(x1, controller, env, Δt, 50, GurobiSolver(OutputFlag=0))
-    @test length(results_stick) == 50 
-    for i in 8:length(results_stick)
-        @test norm(configuration(results_stick[i].state) .- configuration(results_stick[i - 1].state)) <= 1e-5
-        @test norm(velocity(results_stick[i].state)) <= 1e-5
+    results_stick = LCPSim.simulate(x1, controller, env, Δt, N, GurobiSolver(Gurobi.Env(), OutputFlag=0))
+    @testset "sticking" begin
+        @test length(results_stick) == N
+        for i in 8:length(results_stick)
+            @test norm(configuration(results_stick[i].state) .- configuration(results_stick[i - 1].state)) <= 1e-5
+            @test norm(velocity(results_stick[i].state)) <= 1e-5
+        end
     end
 
     # A slightly steeper incline causes the brick to begin to slide
     mechanism, env, x2 = inclined_brick(π/4 + 0.1)
-    Δt = 0.05
-    controller = x -> zeros(num_velocities(x))
     q0 = copy(configuration(x2))
-    results_slide = LCPSim.simulate(x2, controller, env, Δt, 50, GurobiSolver(OutputFlag=0))
-    @test length(results_slide) == 50 
-    for i in 8:length(results_slide)
-        @test norm(configuration(results_slide[i].state) .- configuration(results_slide[i - 1].state)) >= 1e-2
-        @test norm(velocity(results_slide[i].state)) >= 0.5
+    results_slide = LCPSim.simulate(x2, controller, env, Δt, N, GurobiSolver(Gurobi.Env(), OutputFlag=0))
+    @testset "sliding" begin
+        @test length(results_slide) == N
+        for i in 8:length(results_slide)
+            @test norm(configuration(results_slide[i].state) .- configuration(results_slide[i - 1].state)) >= 1e-2
+            @test norm(velocity(results_slide[i].state)) >= 0.5
+        end
     end
 
     if Pkg.installed("RigidBodyTreeInspector") !== nothing
         @eval using RigidBodyTreeInspector
-        @eval using DrakeVisualizer; 
+        @eval using DrakeVisualizer;
         @eval using CoordinateTransformations
         @eval using GeometryTypes
         DrakeVisualizer.any_open_windows() || DrakeVisualizer.new_window()

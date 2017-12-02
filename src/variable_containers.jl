@@ -13,16 +13,16 @@ end
 Base.show(io::IO, cr::ContactResult) = print(io, """ContactResult(β=$(cr.β), λ=$(cr.λ), c_n=$(cr.c_n), ...)""")
 
 
-struct JointLimitResult{T}
+struct JointLimitResult{T, M}
     λ::Vector{T}
-    # direction::Vector{M}
+    scaling::M
 end
 
 struct LCPUpdate{T, M, U}
     state::StateRecord{T, M}
     input::Vector{U}
     contacts::Dict{RigidBody{M}, Vector{ContactResult{T, M}}}
-    joint_contacts::Vector{JointLimitResult{T}}
+    joint_contacts::Vector{JointLimitResult{T, M}}
 end
 
 LCPUpdate(state::StateRecord{T}, input::AbstractVector{U}, contacts::Associative{<:RigidBody{M}}, joint_contacts::Associative) where {T, M, U} =
@@ -33,7 +33,7 @@ _getvalue(x::Number) = x
 _getvalue(f::FreeVector3D) = FreeVector3D(f.frame, _getvalue.(f.v))
 
 
-JuMP.getvalue(r::JointLimitResult) = JointLimitResult(_getvalue.(r.λ))
+JuMP.getvalue(r::JointLimitResult) = JointLimitResult(_getvalue.(r.λ), r.scaling)
 JuMP.getvalue(r::StateRecord{<:AbstractJuMPScalar}) = StateRecord(r.mechanism, _getvalue.(r.state))
 JuMP.getvalue(up::LCPUpdate) =
     LCPUpdate(getvalue(up.state),

@@ -1,7 +1,7 @@
 using LCPSim
 using Base.Test
 
-# write your own tests here
+include("joint_limits.jl")
 include("contact_lqr.jl")
 include("linearized_mechanism.jl")
 include("warmstart.jl")
