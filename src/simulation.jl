@@ -98,7 +98,8 @@ function update(x::StateRecord{X, M},
     end
 
     bias = bias_coriolis_gravity + τ_external_wrenches
-    config_derivative = jac_dq_wrt_v * vnext
+    # config_derivative = jac_dq_wrt_v * vnext
+    config_derivative = linearized(configuration_derivative, xnext)
 
     H = mass_matrix(x_dynamics)
     HΔv = H * (vnext - velocity(x))
@@ -117,6 +118,12 @@ function semi_implicit_update!(xnext::LinearizedState, x::StateRecord, Δt)
     set_linearization_configuration!(xnext, qnext)
 end
 
+function explicit_update!(xnext::LinearizedState, x::StateRecord)
+    set_linearization_velocity!(xnext, velocity(x))
+    set_linearization_configuration!(xnext, configuration(x))
+end
+
+
 function simulate(x0::MechanismState{T, M},
                   controller,
                   env::Environment,
@@ -132,7 +139,8 @@ function simulate(x0::MechanismState{T, M},
     for i in 1:N
         m = Model(solver=solver)
         if relinearize
-            semi_implicit_update!(xnext, x, Δt)
+            # semi_implicit_update!(xnext, x, Δt)
+            explicit_update!(xnext, x)
         end
         u = clamp.(controller(x), input_limits)
         up = update(x, xnext, u, env, Δt, m)
@@ -189,8 +197,10 @@ function optimize(x0::MechanismState,
     xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
     results = map(1:N) do i
-        set_linearization_configuration!(xnext, configuration(seed[i].state))
-        set_linearization_velocity!(xnext, velocity(seed[i].state))
+        if i > 1
+            set_linearization_configuration!(xnext, configuration(seed[i - 1].state))
+            set_linearization_velocity!(xnext, velocity(seed[i - 1].state))
+        end
         u = @variable(m, [1:num_velocities(x0)], basename="u_$i")
         setbounds.(u, input_limits)
         fix_if_tightly_bounded.(u)
