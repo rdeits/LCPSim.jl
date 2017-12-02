@@ -4,10 +4,14 @@ struct ContactResult{T, M}
     β::Vector{T}
     λ::T
     c_n::T
-    Δr::FreeVector3D{SVector{3, T}}
+    # Δr::FreeVector3D{SVector{3, T}}
     point::Point3D{SVector{3, M}}
     obs::Obstacle{M}
+    scaling::M
 end
+
+Base.show(io::IO, cr::ContactResult) = print(io, """ContactResult(β=$(cr.β), λ=$(cr.λ), c_n=$(cr.c_n), ...)""")
+
 
 struct JointLimitResult{T}
     λ::Vector{T}
@@ -39,9 +43,10 @@ JuMP.getvalue(up::LCPUpdate) =
 JuMP.getvalue(c::ContactResult) = ContactResult(_getvalue.(c.β),
                                                 _getvalue(c.λ),
                                                 _getvalue(c.c_n),
-                                                _getvalue(c.Δr),
+                                                # _getvalue(c.Δr),
                                                 c.point,
-                                                c.obs)
+                                                c.obs,
+                                                c.scaling)
 
 function JuMP.setvalue(r::JointLimitResult{<:AbstractJuMPScalar}, seed::JointLimitResult{<:Number})
     setvalue.(r.λ, seed.λ)
@@ -69,7 +74,7 @@ function JuMP.setvalue(contact::ContactResult{<:AbstractJuMPScalar}, seed::Conta
     setvalue(contact.β, seed.β)
     setvalue(contact.λ, seed.λ)
     setvalue(contact.c_n, seed.c_n)
-    setvalue(contact.Δr, seed.Δr)
+    # setvalue(contact.Δr, seed.Δr)
 end
 
 function JuMP.setvalue(contacts::Dict{<:RigidBody, <:Vector{<:ContactResult}}, seeds::Dict)

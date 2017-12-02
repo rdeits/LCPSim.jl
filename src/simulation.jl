@@ -56,17 +56,17 @@ function update(x::StateRecord{X, M},
             pt = t * result.point
             w = Wrench(pt, c)
 
-            nominal_weight = mass(mechanism) * norm(mechanism.gravitational_acceleration.v) / length(contact_results) / length(results)
-            nominal_force = FreeVector3D(result.obs.frame,
-                nominal_weight * result.obs.contact_face.a)
-            @framecheck result.Δr.frame default_frame(world)
-            @framecheck nominal_force.frame default_frame(world)
-            angular = cross(result.Δr, nominal_force)
-            linear = zero(angular)
-            corrective_wrench = Wrench(default_frame(world),
-                angular.v, linear.v)
-            wtotal = w + corrective_wrench
-            # wtotal = w
+            # nominal_weight = mass(mechanism) * norm(mechanism.gravitational_acceleration.v) / length(contact_results) / length(results)
+            # nominal_force = FreeVector3D(result.obs.frame,
+            #     nominal_weight * result.obs.contact_face.a)
+            # @framecheck result.Δr.frame default_frame(world)
+            # @framecheck nominal_force.frame default_frame(world)
+            # angular = cross(result.Δr, nominal_force)
+            # linear = zero(angular)
+            # corrective_wrench = Wrench(default_frame(world),
+            #     angular.v, linear.v)
+            # wtotal = w + corrective_wrench
+            wtotal = w
 
             if haskey(externalwrenches, body)
                 externalwrenches[body] += wtotal
