@@ -1,6 +1,6 @@
-# Comparison of two (equivalent) ways of constructing a mechanism with an 
+# Comparison of two (equivalent) ways of constructing a mechanism with an
 # x, y, θ base: an explicit Planar joint vs. two Prismatic joints and one Rotational
-# joint in series. 
+# joint in series.
 
 
 using LCPSim
@@ -18,10 +18,10 @@ function box_with_planar_base()
     mechanism = parse_urdf(Float64, urdf)
     core = findbody(mechanism, "core")
     fixed_joint = joint_to_parent(core, mechanism)
-    floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint), 
+    floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint),
                           Planar([1., 0, 0], [0., 0, 1.]),
                           position_bounds=[Bounds(-5., 5), Bounds(0., 3), Bounds(-2π, 2π)],
-                          velocity_bounds=[Bounds(-10., 10), Bounds(-10., 10), Bounds(-2π, 2π)],
+                          velocity_bounds=[Bounds(-100., 10), Bounds(-100., 10), Bounds(-100., 100)],
                           effort_bounds=[Bounds(0., 0) for i in 1:3])
     replace_joint!(mechanism, fixed_joint, floating_base)
 
@@ -92,7 +92,7 @@ end
 
     if Pkg.installed("RigidBodyTreeInspector") !== nothing
         @eval using RigidBodyTreeInspector
-        @eval using DrakeVisualizer; 
+        @eval using DrakeVisualizer;
         @eval using CoordinateTransformations
         @eval using GeometryTypes
         DrakeVisualizer.any_open_windows() || DrakeVisualizer.new_window()
@@ -122,7 +122,7 @@ end
         T1 = transform_to_root(x1, findbody(mech1, "core"))
         T2 = transform_to_root(x2, findbody(mech2, "core"))
         @test isapprox(rotation(T1), rotation(T2), atol=1e-3)
-        @test isapprox(translation(T1), translation(T2), atol=2e-3)
+        @test isapprox(translation(T1), translation(T2), atol=1e-2)
     end
 
     # for i in 100:200

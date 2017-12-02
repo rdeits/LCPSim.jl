@@ -3,6 +3,7 @@ using Base.Test
 using RigidBodyDynamics
 using RigidBodyDynamics: Bounds
 using StaticArrays: SVector
+using Gurobi
 
 @testset "joint limits" begin
     @testset "1D mechanism" begin

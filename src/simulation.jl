@@ -139,8 +139,8 @@ function simulate(x0::MechanismState{T, M},
     for i in 1:N
         m = Model(solver=solver)
         if relinearize
-            # semi_implicit_update!(xnext, x, Δt)
-            explicit_update!(xnext, x)
+            semi_implicit_update!(xnext, x, Δt)
+            # explicit_update!(xnext, x)
         end
         u = clamp.(controller(x), input_limits)
         up = update(x, xnext, u, env, Δt, m)
@@ -198,8 +198,9 @@ function optimize(x0::MechanismState,
     input_limits = all_effort_bounds(x0.mechanism)
     results = map(1:N) do i
         if i > 1
-            set_linearization_configuration!(xnext, configuration(seed[i - 1].state))
-            set_linearization_velocity!(xnext, velocity(seed[i - 1].state))
+            semi_implicit_update!(xnext, seed[i - 1].state, Δt)
+        else
+            semi_implicit_update!(xnext, x, Δt)
         end
         u = @variable(m, [1:num_velocities(x0)], basename="u_$i")
         setbounds.(u, input_limits)

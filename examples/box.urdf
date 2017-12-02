@@ -5,7 +5,7 @@
  xsi:schemaLocation="http://drake.mit.edu ../../doc/drakeURDF.xsd" name="BoxValkyrie">
   <link name="core">
     <inertial>
-      <mass value="100.0"/>
+      <mass value="10.0"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <inertia ixx="1.35" iyy="1.67" izz="0.354" ixy="0.0" ixz="0.0" iyz="0.0"/>
     </inertial>
