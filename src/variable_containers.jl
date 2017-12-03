@@ -31,6 +31,20 @@ LCPUpdate(state::StateRecord{T}, input::AbstractVector{U}, contacts::Associative
 _getvalue(x::Variable) = JuMP._getValue(x)
 _getvalue(x::Number) = x
 _getvalue(f::FreeVector3D) = FreeVector3D(f.frame, _getvalue.(f.v))
+function _getvalue(a::AffExpr)
+    ret = a.constant
+    for it in 1:length(a.vars)
+        ret += a.coeffs[it] * _getvalue(a.vars[it])
+    end
+    ret
+end
+function _getvalue(a::QuadExpr)
+    ret = _getvalue(a.aff)
+    for it in 1:length(a.qvars1)
+        ret += a.qcoeffs[it] * _getvalue(a.qvars1[it]) * _getvalue(a.qvars2[it])
+    end
+    return ret
+end
 
 
 JuMP.getvalue(r::JointLimitResult) = JointLimitResult(_getvalue.(r.λ), r.scaling)
