@@ -95,7 +95,7 @@ module Linear
         
         if isa(v, AbstractArray)
             J = similar(v, (length(v), nx))
-            ForwardDiff.extract_jacobian!(J, ydual, nx)
+            ForwardDiff.extract_jacobian!(Void, J, ydual, nx)
             wrapper(v .+ reshape(J * Δx, size(v)))
         else
             wrapper(v + ForwardDiff.partials(ydual)' * Δx)
@@ -107,7 +107,7 @@ module Linear
         nx = length(state_vector(current_state(s)))
         v = ForwardDiff.value.(ydual)
         J = similar(v, (length(v), nx))
-        ForwardDiff.extract_jacobian!(J, ydual, nx)
+        ForwardDiff.extract_jacobian!(Void, J, ydual, nx)
         J
     end
 
@@ -120,7 +120,7 @@ module Linear
         
         if isa(v, AbstractArray)
             J = similar(v, (length(v), nx))
-            ForwardDiff.extract_jacobian!(J, ydual, nx)
+            ForwardDiff.extract_jacobian!(Void, J, ydual, nx)
             result = AffExpr.(v)
             for i in 1:length(v)
                 for j in 1:length(x_current)

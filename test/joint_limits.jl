@@ -60,6 +60,6 @@ using Gurobi
             @test -2π - 1e-3 <= configuration(r.state)[3] <= 2π + 1e-3
         end
         @test configuration(results[end].state) ≈ [0.5, 0.0, 0.3]
-        @test norm(velocity(results[end].state)) ≈ 0 atol=1e-9
+        @test norm(velocity(results[end].state)) ≈ 0 atol=1e-8
     end
 end

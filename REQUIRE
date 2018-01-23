@@ -5,4 +5,4 @@ StaticArrays
 JuMP
 RigidBodyDynamics 0.3
 Rotations
-ForwardDiff
+ForwardDiff 0.5
