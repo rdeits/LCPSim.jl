@@ -148,7 +148,8 @@ function contact_jacobian(state, contacts)
     contact_jacobians = Matrix{eltype(q)}[]
     for contact in contacts
         J = ForwardDiff.jacobian(q) do q
-            x = MechanismState(state.mechanism, q, zeros(eltype(q), num_velocities(state)))
+            x = MechanismState{eltype(q)}(state.mechanism)
+            set_configuration!(x, q)
             T = transform_to_root(x, contact.frame)
             (T * contact).v
         end
