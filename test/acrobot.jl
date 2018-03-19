@@ -1,11 +1,12 @@
 using Base.Test
 using RigidBodyDynamics
 using RigidBodyDynamics: Bounds
-using RigidBodyTreeInspector
 using StaticArrays: SVector
-using DrakeVisualizer
 using Cbc: CbcSolver
 using LCPSim
+using MeshCat
+using MeshCatMechanisms
+
 
 #=
 """
@@ -97,7 +98,7 @@ K = [0.0 0.0 0.0 0.0; -266.087 -107.349 -114.95 -54.3175]
 urdf = joinpath(@__DIR__, "..", "examples", "Acrobot.urdf")
 mechanism = parse_urdf(Float64, urdf)
 world = root_body(mechanism)
-env = Environment{Float64}(Dict())
+env = Environment{Float64}([])
 
 
 x0 = MechanismState{Float64}(mechanism)
@@ -120,23 +121,14 @@ results = LCPSim.simulate(x0, controller, env, Δt, N, CbcSolver());
 @test norm(configuration(results[end].state) - q0) < 1.2
 
 
-if Pkg.installed("RigidBodyTreeInspector") !== nothing
-    @eval using RigidBodyTreeInspector
-    @eval using DrakeVisualizer; 
-    @eval using CoordinateTransformations
-    @eval using GeometryTypes
-    DrakeVisualizer.any_open_windows() || DrakeVisualizer.new_window()
+vis = Visualizer()
+if !haskey(ENV, "CI")
+    open(vis)
+    wait(vis)
+end
 
-    basevis = Visualizer()[:acrobot]
-    delete!(basevis)
-    vis = basevis[:robot]
-    setgeometry!(vis, mechanism, parse_urdf(urdf, mechanism))
-
-    set_configuration!(x0, q0)
-    settransform!(vis, x0)
-    for r in results
-        sleep(Δt)
-        set_configuration!(x0, configuration(r.state))
-        settransform!(vis, x0)
-    end
+mvis = MechanismVisualizer(mechanism, URDFVisuals(urdf))
+for r in results
+    sleep(Δt)
+    set_configuration!(mvis, configuration(r.state))
 end

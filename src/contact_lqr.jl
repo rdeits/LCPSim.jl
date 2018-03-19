@@ -200,13 +200,13 @@ function contact_linearize(state0, input0, Jc)
         dynamics_with_contact_constraint(state, u, Jc)
     end
 
-    A = ForwardDiff.jacobian(state_vector(state0)) do x
+    A = ForwardDiff.jacobian(Vector(state0)) do x
         dynamics(x, input0)
     end
     B = ForwardDiff.jacobian(input0) do u
-        dynamics(state_vector(state0), u)
+        dynamics(Vector(state0), u)
     end
-    A, B, dynamics(state_vector(state0), input0)
+    A, B, dynamics(Vector(state0), input0)
 end
 
 """

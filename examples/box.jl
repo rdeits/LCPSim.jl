@@ -1,28 +1,24 @@
-using DrakeVisualizer
-DrakeVisualizer.any_open_windows() || DrakeVisualizer.new_window()
 using RigidBodyDynamics
-using RigidBodyTreeInspector
+using MeshCat
+using MeshCatMechanisms
 using LCPSim
 using JuMP, Gurobi
 using Polyhedra, CDDLib
 using Base.Test
 
-function DrakeVisualizer.addgeometry!(vis::Visualizer, obs::Obstacle, boundary::HRepresentation)
-    p = intersect(boundary, obs.interior)
-    addgeometry!(vis, CDDPolyhedron{3, Float64}(p))
-end
-
 function box_demo()
-    urdf_mech = parse_urdf(Float64, joinpath(@__DIR__, "box.urdf"))
+    urdf = joinpath(@__DIR__, "box.urdf")
+    urdf_mech = parse_urdf(Float64, urdf)
     mechanism, base = planar_revolute_base()
     attach!(mechanism, base, urdf_mech)
     world = root_body(mechanism)
 
-    basevis = Visualizer()[:box]
-    delete!(basevis)
-    vis = basevis[:robot]
-    setgeometry!(vis, mechanism, parse_urdf(joinpath(@__DIR__, "box.urdf"), mechanism))
-
+    vis = Visualizer()
+    if !haskey(ENV, "CI")
+        open(vis)
+        wait(vis)
+    end
+    mvis = MechanismVisualizer(mechanism, URDFVisuals(urdf), vis[:robot])
     floor = planar_obstacle(default_frame(world), [0, 0, 1.], [0, 0, 0.])
     walls = [
         planar_obstacle(default_frame(world), [1., 0, 0], [-1., 0, 0]),
@@ -30,19 +26,21 @@ function box_demo()
     ]
 
     boundary = SimpleHRepresentation(vcat(eye(3), -eye(3)), vcat([1.1, 1.1, 2.0], -[-1.1, -1.1, -0.1]))
-    addgeometry!.(basevis[:environment], [floor, walls...], boundary)
+    for (i, obstacle) in enumerate([floor, walls...])
+        p = intersect(boundary, obstacle.interior)
+        setobject!(vis[:environment][string(i)], CDDPolyhedron{3, Float64}(p))
+    end
 
     core = findbody(mechanism, "core")
 
-    env = Environment(
-        Dict(core => ContactEnvironment(
-                    [
-                    Point3D(default_frame(core), 0.1, 0, 0.2),
-                    Point3D(default_frame(core), -0.1, 0, 0.2),
-                    Point3D(default_frame(core), 0.1, 0, -0.2),
-                    Point3D(default_frame(core), -0.1, 0, -0.2),
-                     ],
-                    [floor, walls...])));
+    env = Environment([
+        (core, pt, obs) for pt in [
+            Point3D(default_frame(core), 0.1, 0, 0.2),
+            Point3D(default_frame(core), -0.1, 0, 0.2),
+            Point3D(default_frame(core), 0.1, 0, -0.2),
+            Point3D(default_frame(core), -0.1, 0, -0.2)
+        ] for obs in [floor, walls...]
+    ])
 
     controller = x -> zeros(num_velocities(x))
     Δt = 0.02
@@ -61,8 +59,7 @@ function box_demo()
         
         results = LCPSim.simulate(x0, controller, env, Δt, N, GurobiSolver(OutputFlag=0));
         for r in results
-            set_configuration!(x0, configuration(r.state))
-            settransform!(vis, x0)
+            set_configuration!(mvis, configuration(r.state))
             sleep(Δt * 0.01)
         end
         @test length(results) == N

@@ -65,7 +65,7 @@ srand(1)
         @variable m v[1:num_velocities(mechanism)]
         setvalue(q, randn(length(q)))
         setvalue(v, randn(length(v)))
-        x_var = MechanismState(mechanism, q, v)
+        x_var = MechanismState{Variable, Float64, AffExpr}(mechanism, q, v, eltype(q)[])
         x_linear = LinearizedState{Float64}(x_var)
         @test configuration(x_linear.linearization_state) == getvalue(q)
         @test velocity(x_linear.linearization_state) == getvalue(v)

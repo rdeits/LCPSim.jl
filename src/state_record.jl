@@ -23,9 +23,9 @@ end
 StateRecord(mechanism::Mechanism{M}, state::AbstractVector{T}) where {T, M} =
     StateRecord{T, M}(mechanism, state)
 
-Base.convert(::Type{<:StateRecord{T}}, x::MechanismState) where {T} = StateRecord{T}(x.mechanism, copy(state_vector(x)))
+Base.convert(::Type{<:StateRecord{T}}, x::MechanismState) where {T} = StateRecord{T}(x.mechanism, copy(Vector(x)))
 Base.convert(::Type{StateRecord}, x::MechanismState{T}) where {T} = convert(StateRecord{T}, x)
-RigidBodyDynamics.state_vector(r::StateRecord) = r.state
+Base.Vector(r::StateRecord) = r.state
 RigidBodyDynamics.configuration(r::StateRecord) = r.configuration
 RigidBodyDynamics.velocity(r::StateRecord) = r.velocity
 RigidBodyDynamics.set_configuration!(r::StateRecord, q::AbstractVector) = r.configuration .= q

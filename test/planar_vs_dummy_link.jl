@@ -11,6 +11,8 @@ using StaticArrays: SVector
 using Cbc: CbcSolver
 using Gurobi: GurobiSolver
 using Rotations: RotY
+using MeshCat
+using MeshCatMechanisms
 
 urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
 
@@ -51,16 +53,14 @@ function environment_with_floor(mechanism)
     floor = planar_obstacle(default_frame(world), [0, 0, 1.], [0, 0, 0.], 0.5)
 
     core = findbody(mechanism, "core")
-    env = Environment(
-        Dict(core => ContactEnvironment(
-                    [
+    env = Environment([
+        (core, pt, floor) for pt in [
                     Point3D(default_frame(core), SVector(0.1, 0, 0.2)),
                     Point3D(default_frame(core), SVector(-0.1, 0, 0.2)),
                     Point3D(default_frame(core), SVector(0.1, 0, -0.2)),
                     Point3D(default_frame(core), SVector(-0.1, 0, -0.2)),
-                     ],
-                    [floor],
-                    )))
+                     ]
+            ])
     env
 end
 
@@ -90,25 +90,19 @@ end
         LCPSim.simulate(x2, controller, env2, Δt, N, GurobiSolver(env, OutputFlag=0))
     end
 
-    if Pkg.installed("RigidBodyTreeInspector") !== nothing
-        @eval using RigidBodyTreeInspector
-        @eval using DrakeVisualizer;
-        @eval using CoordinateTransformations
-        @eval using GeometryTypes
-        DrakeVisualizer.any_open_windows() || DrakeVisualizer.new_window()
+    vis = Visualizer()
+    if !haskey(ENV, "CI")
+        open(vis)
+        wait(vis)
+    end
 
-        v1 = Visualizer()[:box][:planar]
-        setgeometry!(v1, mech1, parse_urdf(urdf, mech1))
-        v2 = Visualizer()[:box][:dummy]
-        setgeometry!(v2, mech2, parse_urdf(urdf, mech2))
+    mv1 = MechanismVisualizer(mech1, URDFVisuals(urdf), vis[:planar])
+    mv2 = MechanismVisualizer(mech2, URDFVisuals(urdf), vis[:dummy])
 
-        for i in 1:length(results1)
-            set_configuration!(x1, configuration(results1[i].state))
-            settransform!(v1, x1)
-            set_configuration!(x2, configuration(results2[i].state))
-            settransform!(v2, x2)
-            sleep(Δt)
-        end
+    for i in 1:length(results1)
+        set_configuration!(mv1, configuration(results1[i].state))
+        set_configuration!(mv2, configuration(results2[i].state))
+        sleep(Δt)
     end
 
     @test length(results1) == N

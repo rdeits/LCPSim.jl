@@ -6,6 +6,9 @@ using StaticArrays: SVector
 # using Cbc: CbcSolver
 using Gurobi: GurobiSolver
 using Rotations: RotY
+using MeshCat
+using MeshCatMechanisms
+
 
 urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
 
@@ -22,17 +25,15 @@ function inclined_brick(θ)
 
     world = root_body(mechanism)
     R = RotY(θ)
-    floor = planar_obstacle(default_frame(world), R * SVector(0., 0, 1), [0, 0, 0.], 1.0)
-    env = Environment(
-        Dict(core => ContactEnvironment(
-                    [
+    floor = planar_obstacle(default_frame(world), R * SVector(0., 0, 1), [0, 0, 0.], 1.0, :xz)
+    env = Environment([
+        (core, pt, floor) for pt in [
                     Point3D(default_frame(core), SVector(0.1, 0, 0.2)),
                     Point3D(default_frame(core), SVector(-0.1, 0, 0.2)),
                     Point3D(default_frame(core), SVector(0.1, 0, -0.2)),
                     Point3D(default_frame(core), SVector(-0.1, 0, -0.2)),
-                     ],
-                    [floor]
-                    )))
+                     ]
+            ])
 
     x0 = MechanismState{Float64}(mechanism)
     set_velocity!(x0, zeros(num_velocities(x0)))
@@ -73,25 +74,18 @@ end
         end
     end
 
-    if Pkg.installed("RigidBodyTreeInspector") !== nothing
-        @eval using RigidBodyTreeInspector
-        @eval using DrakeVisualizer;
-        @eval using CoordinateTransformations
-        @eval using GeometryTypes
-        DrakeVisualizer.any_open_windows() || DrakeVisualizer.new_window()
+    vis = Visualizer()
+    if !haskey(ENV, "CI")
+        open(vis)
+        wait(vis)
+    end
+    mv1 = MechanismVisualizer(mechanism, URDFVisuals(urdf), vis[:stick])
+    mv2 = MechanismVisualizer(mechanism, URDFVisuals(urdf), vis[:slide])
 
-        v1 = Visualizer()[:box][:stick]
-        setgeometry!(v1, mechanism, parse_urdf(urdf, mechanism))
-        v2 = Visualizer()[:box][:slide]
-        setgeometry!(v2, mechanism, parse_urdf(urdf, mechanism))
-
-        for i in 1:length(results_stick)
-            set_configuration!(x1, configuration(results_stick[i].state))
-            settransform!(v1, x1)
-            set_configuration!(x2, configuration(results_slide[i].state))
-            settransform!(v2, x2)
-            sleep(Δt)
-        end
+    for i in 1:length(results_stick)
+        set_configuration!(mv1, configuration(results_stick[i].state))
+        set_configuration!(mv2, configuration(results_slide[i].state))
+        sleep(Δt)
     end
 
 end

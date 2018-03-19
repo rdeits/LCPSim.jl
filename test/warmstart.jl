@@ -2,7 +2,8 @@ using LCPSim
 using Base.Test
 using RigidBodyDynamics
 using RigidBodyDynamics: Bounds
-using RigidBodyTreeInspector
+using MeshCat
+using MeshCatMechanisms
 using Cbc: CbcSolver
 using Gurobi: GurobiSolver
 using Rotations: RotY
@@ -31,16 +32,14 @@ function environment_with_floor(mechanism)
     floor = planar_obstacle(default_frame(world), [0, 0, 1.], [0, 0, 0.], 0.5)
 
     core = findbody(mechanism, "core")
-    env = Environment(
-        Dict(core => ContactEnvironment(
-                    [
-                    Point3D(default_frame(core), 0.1, 0, 0.2),
-                    Point3D(default_frame(core), -0.1, 0, 0.2),
-                    Point3D(default_frame(core), 0.1, 0, -0.2),
-                    Point3D(default_frame(core), -0.1, 0, -0.2),
-                     ],
-                    [floor],
-                    )))
+    env = Environment([
+        (core, pt, floor) for pt in [
+                    Point3D(default_frame(core), SVector(0.1, 0, 0.2)),
+                    Point3D(default_frame(core), SVector(-0.1, 0, 0.2)),
+                    Point3D(default_frame(core), SVector(0.1, 0, -0.2)),
+                    Point3D(default_frame(core), SVector(-0.1, 0, -0.2)),
+                     ]
+            ])
     env
 end
 
@@ -55,10 +54,11 @@ end
     N = 50
     eps = 2e-3
 
-    basevis = Visualizer()[:box]
-    delete!(basevis)
-    vis = basevis[:robot]
-    setgeometry!(vis, mech1, parse_urdf(urdf, mech1))
+    mvis = MechanismVisualizer(mech1, URDFVisuals(urdf))
+    if !haskey(ENV, "CI")
+        open(mvis.visualizer)
+        wait(mvis.visualizer)
+    end
 
     @testset "linear dynamics" begin
         # First test the linear dynamics
@@ -67,8 +67,7 @@ end
         results1 = LCPSim.simulate(x1, controller, env1, Δt, N, GurobiSolver(Gurobi.Env(), OutputFlag=0); relinearize=false)
 
         for r in results1
-            set_configuration!(x1, configuration(r.state))
-            settransform!(vis, x1)
+            set_configuration!(mvis, configuration(r.state))
             sleep(Δt)
         end
 
@@ -93,8 +92,7 @@ end
         results3 = LCPSim.simulate(x1, controller, env1, Δt, N, GurobiSolver(Gurobi.Env(), OutputFlag=0); relinearize=true)
 
         for r in results3
-            set_configuration!(x1, configuration(r.state))
-            settransform!(vis, x1)
+            set_configuration!(mvis, configuration(r.state))
             sleep(Δt)
         end
 

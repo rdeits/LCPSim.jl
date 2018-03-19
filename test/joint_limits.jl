@@ -17,7 +17,7 @@ using Gurobi
                        velocity_bounds=[Bounds(-10., 10.)],
                        effort_bounds=[Bounds(0., 0.)])
         attach!(mech, world, link, slider)
-        env = Environment{Float64}(Dict())
+        env = Environment{Float64}([])
         x0 = MechanismState{Float64}(mech)
         set_configuration!(x0, [0.5])
 
@@ -45,7 +45,7 @@ using Gurobi
                        velocity_bounds=[Bounds(-10., 10), Bounds(-10., 10), Bounds(-2π, 2π)],
                        effort_bounds=[Bounds(0., 0) for i in 1:3])
         attach!(mech, world, link, planar)
-        env = Environment{Float64}(Dict())
+        env = Environment{Float64}([])
         x0 = MechanismState{Float64}(mech)
         set_configuration!(x0, [0.5, 1.0, 0.3])
 

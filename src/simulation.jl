@@ -40,11 +40,9 @@ function update(x::StateRecord{X, M},
     set_current_velocity!(xnext, vnext)
 
     contact_results = Dict{RigidBody{M}, Vector{ContactResult{Variable, M}}}()
-    for (body, contact_env) in env.contacts
-        contact_results[body] = []
-        for obstacle in contact_env.obstacles, contact_point in contact_env.points
-            push!(contact_results[body], resolve_contact(xnext, body, contact_point, obstacle, model))
-        end
+    for (body, contact_point, obstacle) in env.contacts
+        results = get!(() -> [], contact_results, body)
+        push!(results, resolve_contact(xnext, body, contact_point, obstacle, model))
     end
 
     world = root_body(mechanism)

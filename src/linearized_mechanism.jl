@@ -30,7 +30,7 @@ module Linear
             N = nq + nv + na
             D = typeof(ForwardDiff.Dual(0.0, ForwardDiff.Partials(ntuple(i -> 0.0, N))))
             xdiff = Vector{D}(N)
-            ForwardDiff.seed!(xdiff, state_vector(linear), ForwardDiff.construct_seeds(ForwardDiff.Partials{N, Float64}))
+            ForwardDiff.seed!(xdiff, Vector(linear), ForwardDiff.construct_seeds(ForwardDiff.Partials{N, Float64}))
             diffstate = MechanismState(mechanism, xdiff[1:nq], xdiff[nq + (1:nv)], xdiff[nq + nv + (1:na)])
             current = StateRecord(mechanism, Vector{T}(N))
             new{T, M, S, typeof(diffstate)}(StateRecord(mechanism, Vector{T}(N)),
@@ -84,14 +84,14 @@ module Linear
 
 
     linearization_state(s::LinearizedState) = s.linearization_state
-    linearization_state_vector(s::LinearizedState) = state_vector(s.linearization_state)
+    linearization_state_vector(s::LinearizedState) = Vector(s.linearization_state)
     current_state(s::LinearizedState) = s.current_state
 
     function linearized(f::Function, s::LinearizedState)
         wrapper, ydual = unwrap(f(s.dual_state))
-        nx = length(state_vector(current_state(s)))
+        nx = length(Vector(current_state(s)))
         v = ForwardDiff.value.(ydual)
-        Δx = state_vector(current_state(s)) .- state_vector(linearization_state(s))
+        Δx = Vector(current_state(s)) .- Vector(linearization_state(s))
         
         if isa(v, AbstractArray)
             J = similar(v, (length(v), nx))
@@ -104,7 +104,7 @@ module Linear
 
     function jacobian(f::Function, s::LinearizedState)
         wrapper, ydual = unwrap(f(s.dual_state))
-        nx = length(state_vector(current_state(s)))
+        nx = length(Vector(current_state(s)))
         v = ForwardDiff.value.(ydual)
         J = similar(v, (length(v), nx))
         ForwardDiff.extract_jacobian!(Void, J, ydual, nx)
@@ -113,10 +113,10 @@ module Linear
 
     function linearized(f::Function, s::LinearizedState{Variable}, min_coefficient=1e-15)
         wrapper, ydual = unwrap(f(s.dual_state))
-        nx = length(state_vector(current_state(s)))
+        nx = length(Vector(current_state(s)))
         v = ForwardDiff.value.(ydual)
-        x_current = state_vector(current_state(s))
-        x_linear = state_vector(linearization_state(s))
+        x_current = Vector(current_state(s))
+        x_linear = Vector(linearization_state(s))
         
         if isa(v, AbstractArray)
             J = similar(v, (length(v), nx))

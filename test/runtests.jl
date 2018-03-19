@@ -1,13 +1,15 @@
 using LCPSim
 using Base.Test
 
-include("joint_limits.jl")
-include("contact_lqr.jl")
-include("linearized_mechanism.jl")
-include("warmstart.jl")
-include("inclined_brick.jl")
-include("planar_vs_dummy_link.jl")
-include("acrobot.jl")
-if Pkg.installed("Gurobi") != nothing && Pkg.installed("RigidBodyTreeInspector") != nothing
-    include("../examples/box.jl")
+@testset "LCPSim" begin
+    include("joint_limits.jl")
+    include("contact_lqr.jl")
+    include("linearized_mechanism.jl")
+    include("warmstart.jl")
+    include("inclined_brick.jl")
+    include("planar_vs_dummy_link.jl")
+    include("acrobot.jl")
+    if Pkg.installed("Gurobi") != nothing
+        include("../examples/box.jl")
+    end
 end
