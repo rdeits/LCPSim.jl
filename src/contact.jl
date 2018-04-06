@@ -1,26 +1,6 @@
-contact_normal(obs::Obstacle{T}) where {T} = 
-    FreeVector3D(obs.frame, (SVector{3, T}(obs.contact_face.a)::SVector{3, T}))
+contact_normal(obs::Obstacle) = obs.contact_face.outward_normal
 
-function separation(obs::Obstacle, p::Point3D)
-    @framecheck obs.frame p.frame
-    n = contact_normal(obs)
-    n.v' * p.v - obs.contact_face.β
-end
-
-# function contact_force(r::ContactResult{<:JuMP.AbstractJuMPScalar})
-#     n = contact_normal(r.obs)
-#     D = contact_basis(r.obs)
-#     @framecheck(n.frame, D[1].frame)
-#     v = r.c_n .* n.v
-#     for i in eachindex(r.β)
-#         di = D[i].v
-#         for j in 1:length(di)
-#             append!(v[j], r.β[i] * di[j])
-#         end
-#     end
-#     FreeVector3D(n.frame, r.scaling * v)
-# end
-
+RigidBodyDynamics.separation(obs::Obstacle, p::Point3D) = separation(obs.contact_face, p)
 
 function contact_force(r::ContactResult)
     n = contact_normal(r.obs)
@@ -53,13 +33,7 @@ function add_contact_constraints(model::Model, μ, β, λ, c_n, D_transpose_time
         @constraint model λ + d >= 0 # (8)
     end
 
-    # @disjunction(model, 
-    #     ((separation_from_obstacle <= 1e-3) & (Δr.v .== Δr_true.v)),
-    #     ((c_n == 0) & (Δr.v .== 0))
-    # ) # (10)
-    @disjunction(model,
-                 separation_from_obstacle == 0,
-                 c_n == 0)
+    @disjunction(model, separation_from_obstacle == 0, c_n == 0)
     for j in 1:length(D_transpose_times_v)
         d = D_transpose_times_v[j]
         λ_plus_d = AffExpr(append(d.vars, λ), append(d.coeffs, 1.0), d.constant)
@@ -77,20 +51,10 @@ function resolve_contact(xnext::LinearizedState, body::RigidBody, point::Point3D
     λ   = @variable(model, lowerbound=0, basename="λ", upperbound=100)
     c_n = @variable(model, lowerbound=0, basename="c_n", upperbound=100)
     world = default_frame(root_body(linearization_state(xnext).mechanism))
-    # Δr = FreeVector3D(world, SVector{3, Variable}(@variable(model, [1:3], lowerbound=-10, upperbound=10, basename="Δr")))
-
-    # Δr_true = linearized(xnext) do x
-    #     (transform_to_root(x, point.frame) * point - center_of_mass(x))
-    # end - (transform_to_root(linearization_state(xnext), point.frame) * point - center_of_mass(linearization_state(xnext)))
 
     separation_from_obstacle = linearized(xnext) do x
         separation(obstacle, transform_to_root(x, point.frame) * point)
     end
-
-    # contact_velocity = linearized(x -> point_velocity(twist_wrt_world(x, body), transform_to_root(linearization_state(xnext), point.frame) * point), xnext)
-    # D_transpose_times_v = map(D) do d
-    #     dot(d, contact_velocity)
-    # end
 
     D_transpose_times_v = [
         linearized(x -> dot(d, point_velocity(twist_wrt_world(x, body), transform_to_root(linearization_state(xnext), point.frame) * point)), xnext) for d in D
@@ -109,8 +73,8 @@ end
 #         obstacle.μ * c_n .- sum(β) >= 0 # (9)
 #     end
 
-#     @disjunction(model, 
-#                  (&)(separation_from_obstacle == 0, 
+#     @disjunction(model,
+#                  (&)(separation_from_obstacle == 0,
 #                      [@?(contact_velocity.v[i] == 0) for i in 1:3]...),
 #                  c_n == 0)
 #     ContactResult(β, λ, c_n, point, obstacle)

@@ -15,13 +15,13 @@ export Obstacle,
        LinearizedState,
        linearized
 
-using Polyhedra
 using StaticArrays
 using JuMP
 using JuMP: GenericAffExpr
 using ConditionalJuMP
 using Base.Test
 using RigidBodyDynamics
+using RigidBodyDynamics: HalfSpace3D, separation
 using Rotations
 using ForwardDiff
 
