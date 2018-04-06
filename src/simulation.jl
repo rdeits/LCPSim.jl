@@ -49,27 +49,13 @@ function update(x::StateRecord{X, M},
     externalwrenches = Dict{RigidBody{M}, Wrench{GenericAffExpr{M, Variable}}}()
     for (body, results) in contact_results
         for result in results
-            c = contact_force(result)
-            t = transform_to_root(x_dynamics, result.point.frame)
-            pt = t * result.point
-            w = Wrench(pt, c)
-
-            # nominal_weight = mass(mechanism) * norm(mechanism.gravitational_acceleration.v) / length(contact_results) / length(results)
-            # nominal_force = FreeVector3D(result.obs.frame,
-            #     nominal_weight * result.obs.contact_face.a)
-            # @framecheck result.Δr.frame default_frame(world)
-            # @framecheck nominal_force.frame default_frame(world)
-            # angular = cross(result.Δr, nominal_force)
-            # linear = zero(angular)
-            # corrective_wrench = Wrench(default_frame(world),
-            #     angular.v, linear.v)
-            # wtotal = w + corrective_wrench
-            wtotal = w
-
+            c = transform(x_dynamics, contact_force(result), default_frame(world))
+            p = transform(x_dynamics, result.point, default_frame(world))
+            w = Wrench(p, c)
             if haskey(externalwrenches, body)
-                externalwrenches[body] += wtotal
+                externalwrenches[body] += w
             else
-                externalwrenches[body] = wtotal
+                externalwrenches[body] = w
             end
         end
     end

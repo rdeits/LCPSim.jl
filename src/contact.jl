@@ -53,12 +53,17 @@ function resolve_contact(xnext::LinearizedState, body::RigidBody, point::Point3D
     world = default_frame(root_body(linearization_state(xnext).mechanism))
 
     separation_from_obstacle = linearized(xnext) do x
-        separation(obstacle, transform_to_root(x, point.frame) * point)
+        separation(obstacle, transform(x, point, obstacle.contact_face.outward_normal.frame))
     end
 
-    D_transpose_times_v = [
-        linearized(x -> dot(d, point_velocity(twist_wrt_world(x, body), transform_to_root(linearization_state(xnext), point.frame) * point)), xnext) for d in D
-        ]
+
+    D_transpose_times_v = map(D) do d
+        linearized(xnext) do x
+            v = point_velocity(twist_wrt_world(x, body), transform_to_root(linearization_state(xnext), point.frame) * point)
+            dot(transform_to_root(linearization_state(xnext), d.frame) * d,
+                v)
+        end
+    end
 
     add_contact_constraints(model, obstacle.μ, β, λ, c_n, D_transpose_times_v, separation_from_obstacle)
     ContactResult(β, λ, c_n, point, obstacle, total_weight)

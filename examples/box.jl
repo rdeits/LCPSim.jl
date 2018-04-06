@@ -60,7 +60,7 @@ function box_demo()
         set_velocity!(x0, findjoint(mechanism, "base_x"), 2 * randn(1))
         set_velocity!(x0, findjoint(mechanism, "base_z"), 2 * randn(1))
 
-        results = LCPSim.simulate(x0, controller, env, Δt, N, GurobiSolver(OutputFlag=0));
+        results = LCPSim.simulate(x0, controller, env, Δt, N, GurobiSolver(Gurobi.Env(), OutputFlag=0));
         for r in results
             set_configuration!(mvis, configuration(r.state))
             sleep(Δt * 0.01)
