@@ -1,0 +1,144 @@
+<?xml version="1.0"?>
+
+<robot xmlns="http://drake.mit.edu"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:schemaLocation="http://drake.mit.edu ../../doc/drakeURDF.xsd" name="BoxValkyrie">
+  <link name="floor">
+    <visual>
+      <origin xyz="0 0 -0.05"/>
+      <geometry>
+        <box size="2.2 2.2 0.1"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 -0.05"/>
+      <geometry>
+        <box size="2.2 2.2 0.1"/>
+      </geometry>
+    </collision>
+    <collision>
+      <geometry>
+        <plane normal="0 0 1"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="left_wall">
+    <visual>
+      <origin xyz="-1.05 0 1"/>
+      <geometry>
+        <box size="0.1 2 2"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-1.05 0 1"/>
+      <geometry>
+        <box size="0.1 2 2"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="-1 0 1"/>
+      <geometry>
+        <plane normal="1 0 0"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="right_wall">
+    <visual>
+      <origin xyz="1.05 0 1"/>
+      <geometry>
+        <box size="0.1 2 2"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="1.05 0 1"/>
+      <geometry>
+        <box size="0.1 2 2"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="1 0 1"/>
+      <geometry>
+        <plane normal="-1 0 0"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <link name="box">
+    <inertial>
+      <mass value="10.0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="1.35" iyy="1.67" izz="0.354" ixy="0.0" ixz="0.0" iyz="0.0"/>
+    </inertial>
+    <visual>
+      <geometry>
+        <box size="0.2 0.05 0.4"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="-0.1 0 -0.2"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="-0.1 0 0.2"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0.1 0 -0.2"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0.1 0 0.2"/>
+      <geometry>
+        <sphere radius="0.01"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="-0.1 0 -0.2"/>
+      <geometry>
+        <sphere radius="0"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="-0.1 0 0.2"/>
+      <geometry>
+        <sphere radius="0"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.1 0 -0.2"/>
+      <geometry>
+        <sphere radius="0"/>
+      </geometry>
+    </collision>
+    <collision>
+      <origin xyz="0.1 0 0.2"/>
+      <geometry>
+        <sphere radius="0"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="floor_to_left_wall" type="fixed">
+    <parent link="floor"/>
+    <child link="left_wall"/>
+  </joint>
+
+  <joint name="floor_to_right_wall" type="fixed">
+    <parent link="floor"/>
+    <child link="right_wall"/>
+  </joint>
+
+  <joint name="floor_to_box" type="planar">
+    <parent link="floor"/>
+    <child link="box"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+</robot>

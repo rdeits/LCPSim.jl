@@ -23,7 +23,10 @@ using Base.Test
 using RigidBodyDynamics
 using RigidBodyDynamics: HalfSpace3D, separation
 using Rotations
+using CoordinateTransformations: transform_deriv
 using ForwardDiff
+using MechanismGeometries
+using GeometryTypes: HyperSphere, origin
 
 include("state_record.jl")
 include("linearized_mechanism.jl")

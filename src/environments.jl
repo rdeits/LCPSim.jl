@@ -62,3 +62,25 @@ end
 
 planar_obstacle(frame::CartesianFrame3D, normal::AbstractVector, point::AbstractVector, args...) =
     planar_obstacle(FreeVector3D(frame, normal), Point3D(frame, point), args...)
+
+function parse_contacts(mechanism, urdf, μ=1.0, motion_type::Symbol=:xyz)
+    elements = visual_elements(mechanism, URDFVisuals(urdf; tag="collision"))
+    point_elements = filter(e -> e.geometry isa HyperSphere, elements)
+    points = map(point_elements) do element
+        p = element.transform(SVector(origin(element.geometry)))
+        Point3D(element.frame, p)
+    end
+    plane_elements = filter(e -> e.geometry isa HyperPlane, elements)
+    obstacles = map(plane_elements) do element
+        origin = Point3D(element.frame, element.transform(SVector(0., 0, 0)))
+        normal = FreeVector3D(element.frame, transform_deriv(element.transform, SVector(0., 0, 0)) * element.geometry.normal)
+        hs = HalfSpace3D(origin, normal)
+        Obstacle([hs], hs, μ, motion_type)
+    end
+    contacts = vec(map(Base.Iterators.product(points, obstacles)) do p
+        point, obstacle = p
+        body = body_fixed_frame_to_body(mechanism, point.frame)
+        (body, point, obstacle)
+    end)
+    Environment(contacts)
+end
