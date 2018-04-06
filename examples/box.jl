@@ -27,7 +27,10 @@ function box_demo()
 
     boundary = SimpleHRepresentation(vcat(eye(3), -eye(3)), vcat([1.1, 1.1, 2.0], -[-1.1, -1.1, -0.1]))
     for (i, obstacle) in enumerate([floor, walls...])
-        p = intersect(boundary, obstacle.interior)
+        A = vcat([h.outward_normal.v' for h in obstacle.interior]...)
+        b = vcat([h.outward_normal.v' * h.point.v for h in obstacle.interior]...)
+        interior = SimpleHRepresentation(A, b)
+        p = intersect(boundary, interior)
         setobject!(vis[:environment][string(i)], CDDPolyhedron{3, Float64}(p))
     end
 
@@ -56,7 +59,7 @@ function box_demo()
         set_configuration!(x0, findjoint(mechanism, "base_rotation"), randn(1))
         set_velocity!(x0, findjoint(mechanism, "base_x"), 2 * randn(1))
         set_velocity!(x0, findjoint(mechanism, "base_z"), 2 * randn(1))
-        
+
         results = LCPSim.simulate(x0, controller, env, Δt, N, GurobiSolver(OutputFlag=0));
         for r in results
             set_configuration!(mvis, configuration(r.state))
