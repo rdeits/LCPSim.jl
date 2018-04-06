@@ -84,3 +84,14 @@ function parse_contacts(mechanism, urdf, μ=1.0, motion_type::Symbol=:xyz)
     end)
     Environment(contacts)
 end
+
+function filter_contacts!(env, mechanism, allowed_collisions::Associative{<:RigidBody})
+    filter!(env.contacts) do candidate
+        point_body, point, obstacle = candidate
+        if !haskey(allowed_collisions, point_body)
+            return false
+        end
+        obs_body = body_fixed_frame_to_body(mechanism, obstacle.contact_face.outward_normal.frame)
+        return obs_body in allowed_collisions[point_body]
+    end
+end
