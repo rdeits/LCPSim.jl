@@ -140,20 +140,18 @@ function dlqr(A, B, Q, R)
 end
 
 
-function contact_jacobian(state, contacts)
+function contact_jacobian(state::MechanismState{T}, contacts) where T
+    mechanism = state.mechanism
     if isempty(contacts)
         return zeros(0, num_positions(state))
     end
-    q = configuration(state)
-    contact_jacobians = Matrix{eltype(q)}[]
-    for contact in contacts
-        J = ForwardDiff.jacobian(q) do q
-            x = MechanismState{eltype(q)}(state.mechanism)
-            set_configuration!(x, q)
-            T = transform_to_root(x, contact.frame)
-            (T * contact).v
-        end
-        push!(contact_jacobians, J)
+    world = root_body(mechanism)
+    contact_jacobians = map(contacts) do contact
+        body = RigidBodyDynamics.body_fixed_frame_to_body(mechanism, contact.frame)
+        Jg = geometric_jacobian(state, path(mechanism, world, body))
+        p = transform(state, contact, default_frame(world))
+        p̂ = RigidBodyDynamics.Spatial.vector_to_skew_symmetric(p.v)
+        -p̂ * angular(Jg) + linear(Jg)
     end
     Jc = vcat(contact_jacobians...)
     Jc = Jc[[i for i in 1:size(Jc, 1) if !all(Jc[i, :] .== 0)], :]
@@ -169,7 +167,7 @@ function dynamics_with_contact_constraint(state::MechanismState, input::Abstract
         bounds = effort_bounds(joint)
         for (i, b) in enumerate(bounds)
             if b.upper == b.lower == 0
-                j = parentindexes(velocity(state, joint))[i]
+                j = velocity_range(state, joint)[i]
                 St[j, j] = 0
             end
         end
