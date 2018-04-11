@@ -6,8 +6,8 @@ using LCPSim
 using JuMP, Gurobi
 using Base.Test
 
-function box_demo()
-    urdf = joinpath(@__DIR__, "box_in_a_box.urdf")
+@testset "box in a box" begin
+    urdf = joinpath(@__DIR__, "urdf", "box_in_a_box.urdf")
     mechanism = parse_urdf(Float64, urdf)
     planar_joint = findjoint(mechanism, "floor_to_box")
     planar_joint.position_bounds .= [
@@ -44,5 +44,3 @@ function box_demo()
         @test length(results) == N
     end
 end
-
-box_demo()

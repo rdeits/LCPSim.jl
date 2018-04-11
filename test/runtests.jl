@@ -11,5 +11,6 @@ using Base.Test
     include("acrobot.jl")
     if Pkg.installed("Gurobi") != nothing
         include("../examples/box.jl")
+        include("../examples/rimless_wheel.jl")
     end
 end
