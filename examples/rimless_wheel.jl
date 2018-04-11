@@ -32,6 +32,6 @@ using Base.Test
 
     for r in results
         set_configuration!(mvis, configuration(r.state))
-        sleep(dt)
+        sleep(Δt)
     end
 end
