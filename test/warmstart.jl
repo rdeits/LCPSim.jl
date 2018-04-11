@@ -9,7 +9,7 @@ using Gurobi: GurobiSolver
 using Rotations: RotY
 using JuMP: setvalue, getvalue
 
-urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
+urdf = joinpath(@__DIR__, "urdf", "box.urdf")
 
 function box_with_planar_base()
     mechanism = parse_urdf(Float64, urdf)

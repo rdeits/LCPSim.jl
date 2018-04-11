@@ -14,7 +14,7 @@ using Rotations: RotY
 using MeshCat
 using MeshCatMechanisms
 
-urdf = joinpath(@__DIR__, "..", "examples", "box.urdf")
+urdf = joinpath(@__DIR__, "urdf", "box.urdf")
 
 function box_with_planar_base()
     mechanism = parse_urdf(Float64, urdf)

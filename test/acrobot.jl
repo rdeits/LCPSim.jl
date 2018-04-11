@@ -94,41 +94,43 @@ R = diagm([1, 1])
 K = lqr(A, B, Q, R)
 =#
 
-K = [0.0 0.0 0.0 0.0; -266.087 -107.349 -114.95 -54.3175]
-urdf = joinpath(@__DIR__, "..", "examples", "Acrobot.urdf")
-mechanism = parse_urdf(Float64, urdf)
-world = root_body(mechanism)
-env = Environment{Float64}([])
+@testset "acrobot" begin
+    K = [0.0 0.0 0.0 0.0; -266.087 -107.349 -114.95 -54.3175]
+    urdf = joinpath(@__DIR__, "..", "examples", "urdf", "Acrobot.urdf")
+    mechanism = parse_urdf(Float64, urdf)
+    world = root_body(mechanism)
+    env = Environment{Float64}([])
 
 
-x0 = MechanismState{Float64}(mechanism)
-set_velocity!(x0, zeros(num_velocities(x0)))
-set_configuration!(x0, findjoint(mechanism, "shoulder"), [π])
-set_configuration!(x0, findjoint(mechanism, "elbow"), [-0.1])
-q0 = copy(configuration(x0))
-v0 = copy(velocity(x0))
+    x0 = MechanismState{Float64}(mechanism)
+    set_velocity!(x0, zeros(num_velocities(x0)))
+    set_configuration!(x0, findjoint(mechanism, "shoulder"), [π])
+    set_configuration!(x0, findjoint(mechanism, "elbow"), [-0.1])
+    q0 = copy(configuration(x0))
+    v0 = copy(velocity(x0))
 
-controller = x -> begin
-    x̂ = vcat(configuration(x), velocity(x)) - vcat(q0, v0)
-    -K * x̂
-end
+    controller = x -> begin
+        x̂ = vcat(configuration(x), velocity(x)) - vcat(q0, v0)
+        -K * x̂
+    end
 
-Δt = 0.05
-N = 100
-results = LCPSim.simulate(x0, controller, env, Δt, N, CbcSolver());
-@test length(results) == N
-@test norm(velocity(results[end].state)) < 0.03
-@test norm(configuration(results[end].state) - q0) < 1.2
+    Δt = 0.05
+    N = 100
+    results = LCPSim.simulate(x0, controller, env, Δt, N, CbcSolver());
+    @test length(results) == N
+    @test norm(velocity(results[end].state)) < 0.03
+    @test norm(configuration(results[end].state) - q0) < 1.2
 
 
-vis = Visualizer()
-if !haskey(ENV, "CI")
-    open(vis)
-    wait(vis)
-end
+    vis = Visualizer()
+    if !haskey(ENV, "CI")
+        open(vis)
+        wait(vis)
+    end
 
-mvis = MechanismVisualizer(mechanism, URDFVisuals(urdf))
-for r in results
-    sleep(Δt)
-    set_configuration!(mvis, configuration(r.state))
+    mvis = MechanismVisualizer(mechanism, URDFVisuals(urdf), vis)
+    for r in results
+        sleep(Δt)
+        set_configuration!(mvis, configuration(r.state))
+    end
 end
