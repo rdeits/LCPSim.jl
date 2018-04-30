@@ -154,7 +154,7 @@ function contact_jacobian(state::MechanismState{T}, contacts) where T
         -p̂ * angular(Jg) + linear(Jg)
     end
     Jc = vcat(contact_jacobians...)
-    Jc = Jc[[i for i in 1:size(Jc, 1) if !all(Jc[i, :] .== 0)], :]
+    Jc = Jc[[i for i in 1:size(Jc, 1) if !(norm(Jc[i, :]) < 1e-9)], :]
     Jc
 end
 
