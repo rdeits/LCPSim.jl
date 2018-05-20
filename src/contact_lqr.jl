@@ -193,7 +193,7 @@ function contact_linearize(state0, input0, Jc)
 
     function dynamics(x, u)
         q = x[1:num_positions(state0)]
-        v = x[num_positions(state0) + 1 : end]
+        v = x[num_positions(state0) + (1:num_velocities(state0))]
         state = MechanismState(mechanism, q, v)
         dynamics_with_contact_constraint(state, u, Jc)
     end
