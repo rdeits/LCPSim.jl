@@ -12,7 +12,11 @@ struct StateRecord{T, M}
     function StateRecord{T, M}(mechanism::Mechanism{M}, state::AbstractVector{T}) where {T, M}
         c = view(state, 1:num_positions(mechanism))
         v = view(state, num_positions(mechanism) + (1:num_velocities(mechanism)))
-        a = view(state, num_positions(mechanism) + num_velocities(mechanism) + (1:num_additional_states(mechanism)))
+        if length(state) > (num_positions(mechanism) + num_velocities(mechanism))
+            a = view(state, num_positions(mechanism) + num_velocities(mechanism) + (1:num_additional_states(mechanism)))
+        else
+            a = @view state[length(state) + 1: length(state)]
+        end
         new{T, M}(mechanism, state, c, v, a)
     end
 
