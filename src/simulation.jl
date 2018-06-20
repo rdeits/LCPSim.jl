@@ -80,7 +80,8 @@ function update(x::StateRecord{X, M},
     end
 
     bias = bias_coriolis_gravity + τ_external_wrenches
-    config_derivative = linearized(configuration_derivative, xnext)
+    Q_v = RigidBodyDynamics.velocity_to_configuration_derivative_jacobian(x_dynamics)
+    config_derivative = Q_v * vnext
 
     H = mass_matrix(x_dynamics)
     HΔv = H * (vnext - velocity(x))
