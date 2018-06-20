@@ -63,14 +63,12 @@ function update(x::StateRecord{X, M},
     joint_limit_results = [resolve_joint_limit(model, xnext, joint) for joint in joints(mechanism)]
     joint_limit_forces = zeros(GenericAffExpr{M, Variable}, num_velocities(x))
 
-    jac_dq_wrt_v = Linear.jacobian(configuration_derivative, xnext)[:, length(qnext) + 1:end]
-    jac_v_wrt_dq = jac_dq_wrt_v'
     for (i, joint) in enumerate(joints(mechanism))
         vrange = velocity_range(x_dynamics, joint)
-        crange = configuration_range(x_dynamics, joint)
-        @views begin
-            joint_limit_forces[vrange] .+= jac_v_wrt_dq[vrange, crange] * generalized_force(joint_limit_results[i])
-        end
+        jt = joint_type(joint)
+        jac_v_wrt_dq = zeros(num_velocities(jt), num_positions(jt))
+        RigidBodyDynamics.configuration_derivative_to_velocity_jacobian!(jac_v_wrt_dq, jt, configuration(x_dynamics, joint))
+        joint_limit_forces[velocity_range(x_dynamics, joint)] .+= jac_v_wrt_dq * generalized_force(joint_limit_results[i])
     end
 
     bias_coriolis_gravity = linearized(dynamics_bias, xnext)
@@ -82,7 +80,6 @@ function update(x::StateRecord{X, M},
     end
 
     bias = bias_coriolis_gravity + τ_external_wrenches
-    # config_derivative = jac_dq_wrt_v * vnext
     config_derivative = linearized(configuration_derivative, xnext)
 
     H = mass_matrix(x_dynamics)
