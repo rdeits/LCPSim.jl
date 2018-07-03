@@ -33,7 +33,7 @@ function add_contact_constraints(model::Model, μ, β, λ, c_n, D_transpose_time
         @constraint model λ + d >= 0 # (8)
     end
 
-    @disjunction(model, separation_from_obstacle == 0, c_n == 0)
+    @disjunction(model, separation_from_obstacle == 0, c_n == 0) # (10)
     for j in 1:length(D_transpose_times_v)
         d = D_transpose_times_v[j]
         λ_plus_d = AffExpr(append(d.vars, λ), append(d.coeffs, 1.0), d.constant)
