@@ -17,7 +17,7 @@ function hopper()
     velocity_bounds(base_z) .= Bounds(-10., 10)
     effort_bounds(base_z) .= Bounds(0., 0)
     attach!(mechanism, world, core, base_z)
-    
+
     frame = CartesianFrame3D("foot")
     inertia = SpatialInertia(frame, 0.02 * eye(3), zeros(3), 0.2)
     foot = RigidBody(inertia)
@@ -42,7 +42,7 @@ end
 @testset "contact LQR" begin
     x_fp = [1., -1, 0, 0]
     u_fp = [-9.81]
-    @test hopper_dynamics_in_contact(x_fp, u_fp) ≈ zeros(4) 
+    @test hopper_dynamics_in_contact(x_fp, u_fp) ≈ zeros(4)
 
     A = ForwardDiff.jacobian(x -> hopper_dynamics_in_contact(x, u_fp), x_fp)
     B = ForwardDiff.jacobian(u -> hopper_dynamics_in_contact(x_fp, u), u_fp)
@@ -55,7 +55,7 @@ end
     Bm = N' * B
     Rm = R
     Qm = N' * Q * N
-    Km, Sm = LCPSim.ContactLQR.lqr(Am, Bm, Qm, Rm)
+    _, _, _, Km, Sm = LCPSim.ContactLQR.lqr(Am, Bm, Qm, Rm)
     K = Km * N'
     @test K ≈ [-16.5831 16.5831 -4.64576 4.64576] atol=1e-4
 
@@ -63,7 +63,7 @@ end
     state = MechanismState(mechanism, x_fp[1:2], x_fp[3:4])
     foot = findbody(mechanism, "foot")
     contacts = [Point3D(default_frame(foot), SVector(0., 0, 0))]
-    K2, S2 = LCPSim.ContactLQR.contact_lqr(state, [0, -9.81], Q, 0.1 * eye(2), contacts)
+    _, _, _, K2, S2 = LCPSim.ContactLQR.contact_lqr(state, [0, -9.81], Q, 0.1 * eye(2), contacts)
 
     @test K2[2, :] ≈ K[:]
 end

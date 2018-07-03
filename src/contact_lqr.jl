@@ -249,7 +249,7 @@ function contact_lqr(state::MechanismState, input::AbstractVector, Q::AbstractMa
     Km, Sm = lqr(Am, Bm, Qm, Rm)
     K = Km * N'
     S = N * Sm * N'
-    return K, S
+    return A, B, c, K, S
 end
 
 function contact_dlqr(state::MechanismState, input::AbstractVector, Q::AbstractMatrix, R::AbstractMatrix, Δt, contacts::AbstractVector{<:Point3D}=[])
@@ -265,7 +265,7 @@ function contact_dlqr(state::MechanismState, input::AbstractVector, Q::AbstractM
     Km_d, Sm_d = dlqr(Am_d, Bm_d, Qm, Rm)
     K_d = Km_d * N'
     S_d = N * Sm_d * N'
-    return K_d, S_d
+    return zero_order_hold(A, B, c, Δt)..., K_d, S_d
 end
 
 end
