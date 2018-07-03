@@ -55,7 +55,7 @@ end
     Bm = N' * B
     Rm = R
     Qm = N' * Q * N
-    _, _, _, Km, Sm = LCPSim.ContactLQR.lqr(Am, Bm, Qm, Rm)
+    Km, Sm = LCPSim.ContactLQR.lqr(Am, Bm, Qm, Rm)
     K = Km * N'
     @test K ≈ [-16.5831 16.5831 -4.64576 4.64576] atol=1e-4
 
