@@ -17,6 +17,8 @@ module Linear
            linearization_state,
            linearized
 
+    qv(state::Union{MechanismState, StateRecord}) = vcat(Vector(configuration(state)), Vector(velocity(state)))
+
     struct LinearizedState{T, M, SLinear <: MechanismState{<:Number}, SDual <: MechanismState{<:ForwardDiff.Dual}}
         current_state::StateRecord{T, M}
         linearization_state::SLinear
@@ -27,11 +29,11 @@ module Linear
             nq = num_positions(mechanism)
             nv = num_velocities(mechanism)
             na = num_additional_states(mechanism)
-            N = nq + nv + na
+            N = nq + nv
             D = typeof(ForwardDiff.Dual(0.0, ForwardDiff.Partials(ntuple(i -> 0.0, N))))
             xdiff = Vector{D}(N)
-            ForwardDiff.seed!(xdiff, Vector(linear), ForwardDiff.construct_seeds(ForwardDiff.Partials{N, Float64}))
-            diffstate = MechanismState(mechanism, xdiff[1:nq], xdiff[nq + (1:nv)], xdiff[nq + nv + (1:na)])
+            ForwardDiff.seed!(xdiff, qv(linear), ForwardDiff.construct_seeds(ForwardDiff.Partials{N, Float64}))
+            diffstate = MechanismState(mechanism, xdiff[1:nq], xdiff[nq + (1:nv)], zeros(D, na))
             current = StateRecord(mechanism, Vector{T}(N))
             new{T, M, S, typeof(diffstate)}(StateRecord(mechanism, Vector{T}(N)),
                                          linear,
@@ -77,9 +79,9 @@ module Linear
     unwrap(p::Transform3D) = (v -> Transform3D(p.from, p.to, v), p.mat)
     unwrap(p) = (identity, p)
 
-    current_configuration(s::LinearizedState, joint::Joint) = 
+    current_configuration(s::LinearizedState, joint::Joint) =
         @view configuration(current_state(s))[parentindexes(configuration(s.dual_state, joint))...]
-    current_velocity(s::LinearizedState, joint::Joint) = 
+    current_velocity(s::LinearizedState, joint::Joint) =
         @view velocity(current_state(s))[parentindexes(velocity(s.dual_state, joint))...]
 
 
@@ -89,22 +91,22 @@ module Linear
 
     function linearized(f::Function, s::LinearizedState)
         wrapper, ydual = unwrap(f(s.dual_state))
-        nx = length(Vector(current_state(s)))
+        nx = num_positions(current_state(s)) + num_velocities(current_state(s))
         v = ForwardDiff.value.(ydual)
-        Δx = Vector(current_state(s)) .- Vector(linearization_state(s))
-        
+        Δx = qv(current_state(s)) .- qv(linearization_state(s))
+
         if isa(v, AbstractArray)
             J = similar(v, (length(v), nx))
             ForwardDiff.extract_jacobian!(Void, J, ydual, nx)
             wrapper(v .+ reshape(J * Δx, size(v)))
         else
             wrapper(v + ForwardDiff.partials(ydual)' * Δx)
-        end 
+        end
     end
 
     function jacobian(f::Function, s::LinearizedState)
         wrapper, ydual = unwrap(f(s.dual_state))
-        nx = length(Vector(current_state(s)))
+        nx = num_positions(current_state(s)) + num_velocities(current_state(s))
         v = ForwardDiff.value.(ydual)
         J = similar(v, (length(v), nx))
         ForwardDiff.extract_jacobian!(Void, J, ydual, nx)
@@ -113,11 +115,11 @@ module Linear
 
     function linearized(f::Function, s::LinearizedState{Variable}, min_coefficient=1e-15)
         wrapper, ydual = unwrap(f(s.dual_state))
-        nx = length(Vector(current_state(s)))
+        nx = num_positions(current_state(s)) + num_velocities(current_state(s))
         v = ForwardDiff.value.(ydual)
-        x_current = Vector(current_state(s))
-        x_linear = Vector(linearization_state(s))
-        
+        x_current = qv(current_state(s))
+        x_linear = qv(linearization_state(s))
+
         if isa(v, AbstractArray)
             J = similar(v, (length(v), nx))
             ForwardDiff.extract_jacobian!(Void, J, ydual, nx)
@@ -141,7 +143,7 @@ module Linear
                 end
             end
             wrapper(result)
-        end 
+        end
     end
 
 end

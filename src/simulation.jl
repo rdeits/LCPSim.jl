@@ -66,8 +66,7 @@ function update(x::StateRecord{X, M},
     for (i, joint) in enumerate(joints(mechanism))
         vrange = velocity_range(x_dynamics, joint)
         jt = joint_type(joint)
-        jac_v_wrt_dq = zeros(num_velocities(jt), num_positions(jt))
-        RigidBodyDynamics.configuration_derivative_to_velocity_jacobian!(jac_v_wrt_dq, jt, configuration(x_dynamics, joint))
+        jac_v_wrt_dq = RigidBodyDynamics.configuration_derivative_to_velocity_jacobian(jt, configuration(x_dynamics, joint))
         joint_limit_forces[velocity_range(x_dynamics, joint)] .+= jac_v_wrt_dq * generalized_force(joint_limit_results[i])
     end
 
@@ -94,10 +93,15 @@ end
 """
 Update the linearization state of ``xnext`` using the current state ``x``
 """
-function semi_implicit_update!(xnext::LinearizedState, x::StateRecord, Δt)
+function semi_implicit_update!(xnext::LinearizedState, x::Union{StateRecord, MechanismState}, Δt)
+    # we need to use xnext to compute qdot instead of x since
+    # x might be a StateRecord and not a full MechanismState
+    set_linearization_configuration!(xnext, configuration(x))
     set_linearization_velocity!(xnext, velocity(x))
-    qnext = configuration(xnext.linearization_state) .+ Δt .* configuration_derivative(xnext.linearization_state)
-    set_linearization_configuration!(xnext, qnext)
+    q̇ = configuration_derivative(linearization_state(xnext))
+
+    set_linearization_configuration!(xnext,
+        configuration(x) .+ Δt .* q̇)
 end
 
 function explicit_update!(xnext::LinearizedState, x::StateRecord)
