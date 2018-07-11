@@ -110,28 +110,15 @@ end
     @test length(results1) == N
     @test length(results2) == N
 
-    for i in 1:30
+    for i in 1:N
         set_configuration!(x1, configuration(results1[i].state))
         set_velocity!(x1, velocity(results1[i].state))
         set_configuration!(x2, configuration(results2[i].state))
         set_velocity!(x2, velocity(results2[i].state))
         T1 = transform_to_root(x1, findbody(mech1, "core"))
         T2 = transform_to_root(x2, findbody(mech2, "core"))
-        @test rotation(T1) ≈ rotation(T2) atol=1e-2
-        @test translation(T1) ≈ translation(T2) atol=1e-2
+        atol = N <= 30 ? 1e-2 : 5e-2
+        @test rotation(T1) ≈ rotation(T2) atol=atol
+        @test translation(T1) ≈ translation(T2) atol=atol
     end
-
-    # for i in 100:200
-    #     set_configuration!(x1, configuration(results1[i].state))
-    #     set_velocity!(x1, velocity(results1[i].state))
-    #     set_configuration!(x2, configuration(results2[i].state))
-    #     set_velocity!(x2, velocity(results2[i].state))
-    #     T1 = transform_to_root(x1, findbody(mech1, "core"))
-    #     T2 = transform_to_root(x2, findbody(mech2, "core"))
-    #     @test isapprox(rotation(T1), rotation(T2), atol=1e-2)
-    #     @test isapprox(translation(T1), translation(T2), atol=1e-2)
-    # end
-
-    # @test norm(velocity(results1[end].state)) <= 0.4
-    # @test norm(velocity(results2[end].state)) <= 0.4
 end
