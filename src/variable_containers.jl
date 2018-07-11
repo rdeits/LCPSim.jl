@@ -18,15 +18,16 @@ struct JointLimitResult{T, M}
     scaling::M
 end
 
-struct LCPUpdate{T, M, U}
+struct LCPUpdate{T, M, U, Tdt}
+    Δt::Tdt
     state::StateRecord{T, M}
     input::Vector{U}
     contacts::Dict{RigidBody{M}, Vector{ContactResult{T, M}}}
     joint_contacts::Vector{JointLimitResult{T, M}}
 end
 
-LCPUpdate(state::StateRecord{T}, input::AbstractVector{U}, contacts::Associative{<:RigidBody{M}}, joint_contacts::Associative) where {T, M, U} =
-    LCPUpdate{T, M, U}(state, input, contacts, joint_contacts)
+LCPUpdate(Δt::Tdt, ::StateRecord{T}, input::AbstractVector{U}, contacts::Associative{<:RigidBody{M}}, joint_contacts::Associative) where {T, M, U, Tdt} =
+    LCPUpdate{T, M, U, Tdt}(Δt, state, input, contacts, joint_contacts)
 
 _getvalue(x::Variable) = JuMP._getValue(x)
 _getvalue(x::Number) = x
@@ -50,7 +51,8 @@ end
 JuMP.getvalue(r::JointLimitResult) = JointLimitResult(_getvalue.(r.λ), r.scaling)
 JuMP.getvalue(r::StateRecord{<:AbstractJuMPScalar}) = StateRecord(r.mechanism, _getvalue.(r.state))
 JuMP.getvalue(up::LCPUpdate) =
-    LCPUpdate(getvalue(up.state),
+    LCPUpdate(_getvalue(up.Δt),
+              getvalue(up.state),
               _getvalue.(up.input),
               Dict([k => getvalue.(v) for (k, v) in up.contacts]),
               getvalue.(up.joint_contacts))
@@ -67,6 +69,9 @@ function JuMP.setvalue(r::JointLimitResult{<:AbstractJuMPScalar}, seed::JointLim
 end
 
 function JuMP.setvalue(up::LCPUpdate{<:AbstractJuMPScalar}, seed::LCPUpdate{<:Number})
+    if typeof(up.Δt) <: AbstractJuMPScalar
+        setvalue(up.Δt, seed.Δt)
+    end
     setvalue(up.state, seed.state)
     if eltype(up.input) <: AbstractJuMPScalar
         for i in eachindex(up.input)

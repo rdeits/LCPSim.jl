@@ -87,7 +87,7 @@ function update(x::StateRecord{X, M},
     @constraint(model, HΔv .== Δt .* (u .+ joint_limit_forces .- bias)) # (5)
     @constraint(model, qnext .- configuration(x) .== Δt .* config_derivative) # (6)
 
-    LCPUpdate(StateRecord(mechanism, vcat(qnext, vnext)), u, contact_results, joint_limit_results)
+    LCPUpdate(Δt, StateRecord(mechanism, vcat(qnext, vnext)), u, contact_results, joint_limit_results)
 end
 
 """
@@ -121,7 +121,7 @@ function simulate(x0::MechanismState{T, M},
     x = StateRecord(x0)
     xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
-    results = LCPUpdate{Float64, M, Float64}[]
+    results = LCPUpdate{Float64, M, Float64, Float64}[]
     for i in 1:N
         m = Model(solver=solver)
         if relinearize
