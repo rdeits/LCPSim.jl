@@ -65,7 +65,7 @@ planar_obstacle(frame::CartesianFrame3D, normal::AbstractVector, point::Abstract
 
 function parse_contacts(mechanism, urdf, μ=1.0, motion_type::Symbol=:xyz)
     elements = visual_elements(mechanism, URDFVisuals(urdf; tag="collision"))
-    point_elements = filter(e -> e.geometry isa HyperSphere, elements)
+    point_elements = filter(e -> e.geometry isa HyperSphere && radius(e.geometry) == 0, elements)
     points = map(point_elements) do element
         p = element.transform(SVector(origin(element.geometry)))
         Point3D(element.frame, p)
