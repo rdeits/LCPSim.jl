@@ -148,10 +148,16 @@ function contact_jacobian(state::MechanismState{T}, contacts) where T
     world = root_body(mechanism)
     contact_jacobians = map(contacts) do contact
         body = RigidBodyDynamics.body_fixed_frame_to_body(mechanism, contact.frame)
-        Jg = geometric_jacobian(state, path(mechanism, world, body))
+        # Jg = geometric_jacobian(state, path(mechanism, world, body))
         p = transform(state, contact, default_frame(world))
-        p̂ = RigidBodyDynamics.Spatial.vector_to_skew_symmetric(p.v)
-        -p̂ * angular(Jg) + linear(Jg)
+        # p̂ = RigidBodyDynamics.Spatial.vector_to_skew_symmetric(p.v)
+        # J = -p̂ * angular(Jg) + linear(Jg)
+        Jp = point_jacobian(state, path(mechanism, root_body(mechanism), body), p)
+        @assert Jp.frame == default_frame(world)
+        # @show Array(Jp) J
+        # @show Array(Jp) ≈ J
+        # @show Jp.frame
+        Array(Jp)
     end
     Jc = vcat(contact_jacobians...)
     Jc = Jc[[i for i in 1:size(Jc, 1) if !(norm(Jc[i, :]) < 1e-9)], :]
@@ -256,7 +262,21 @@ function contact_dlqr(state::MechanismState, input::AbstractVector, Q::AbstractM
     Jc = contact_jacobian(state, contacts)
     A, B, c = contact_linearize(state, input, Jc)
     A[abs.(A) .< 1e-6] .= 0
-    N = nullspace([Jc zeros(Jc); zeros(Jc) Jc])
+    # ṗ = Jc v
+    #   = Jc (J_qdot_to_v * q̇)
+    J_qdot_to_v = RigidBodyDynamics.configuration_derivative_to_velocity_jacobian(state)
+    Jcv = Jc
+    Jcq = Jc * J_qdot_to_v
+    M = [Jcq                              zeros(size(Jcq, 1), size(Jc, 2));
+         zeros(size(Jc, 1), size(Jcq, 2)) Jc]
+    @show size(M)
+    N = nullspace(M)
+    @show size(N)
+    # N = nullspace([Jc zeros(Jc); zeros(Jc) Jc])
+    # A: (nv + nv, nq + nv)
+    # B: (nv + nv, nv)
+    # N: (nq + nv, ?)
+    @show size(A) size(B)
     Am = N' * A * N
     Bm = N' * B
     Rm = R
