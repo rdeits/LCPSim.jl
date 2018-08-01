@@ -48,3 +48,59 @@ function quaternion_floating_base()
     mechanism, body
 end
 
+function xyz_rpy_floating_base()
+    world = RigidBody{Float64}("world")
+    mechanism = Mechanism(world; gravity=SVector(0, 0, -9.81))
+
+    parent = world
+    frame = CartesianFrame3D("dummy_x")
+    inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
+    body = RigidBody(inertia)
+    # joint = Joint("base_x", Prismatic([1., 0, 0]))
+    joint = Joint("base_x", Fixed{Float64}())
+    attach!(mechanism, parent, body, joint)
+
+    parent = body
+    frame = CartesianFrame3D("dummy_y")
+    inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
+    body = RigidBody(inertia)
+    joint = Joint("base_y", Prismatic([0., 1, 0]))
+    attach!(mechanism, parent, body, joint)
+
+    parent = body
+    frame = CartesianFrame3D("dummy_z")
+    inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
+    body = RigidBody(inertia)
+    joint = Joint("base_z", Prismatic([0., 0, 1]))
+    attach!(mechanism, parent, body, joint)
+
+    parent = body
+    frame = CartesianFrame3D("dummy_rx")
+    inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
+    body = RigidBody(inertia)
+    joint = Joint("base_rx", Revolute([1., 0, 0]))
+    attach!(mechanism, parent, body, joint)
+
+    parent = body
+    frame = CartesianFrame3D("dummy_ry")
+    inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
+    body = RigidBody(inertia)
+    # joint = Joint("base_ry", Revolute([0., 1, 0]))
+    joint = Joint("base_ry", Fixed{Float64}())
+    attach!(mechanism, parent, body, joint)
+
+    parent = body
+    frame = CartesianFrame3D("dummy_rz")
+    inertia = SpatialInertia(frame, 0 * eye(3), zeros(3), 0.0)
+    body = RigidBody(inertia)
+    joint = Joint("base_rz", Revolute([0., 0, 1]))
+    attach!(mechanism, parent, body, joint)
+
+    for joint in joints(mechanism)
+        position_bounds(joint) .= Bounds(-10, 10)
+        velocity_bounds(joint) .= Bounds(-1000, 1000)
+        effort_bounds(joint) .= Bounds(0, 0)
+    end
+
+    mechanism, body
+end

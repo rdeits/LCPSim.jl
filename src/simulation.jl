@@ -1,13 +1,13 @@
 using RigidBodyDynamics: Bounds, upper, lower
 
 all_configuration_bounds(m::Mechanism) =
-    collect(Base.Iterators.flatten(map(position_bounds, joints(m))))
+    collect(Base.Iterators.flatten(map(position_bounds, tree_joints(m))))
 
 all_velocity_bounds(m::Mechanism) =
-    collect(Base.Iterators.flatten(map(velocity_bounds, joints(m))))
+    collect(Base.Iterators.flatten(map(velocity_bounds, tree_joints(m))))
 
 all_effort_bounds(m::Mechanism) =
-    collect(Base.Iterators.flatten(map(effort_bounds, joints(m))))
+    collect(Base.Iterators.flatten(map(effort_bounds, tree_joints(m))))
 
 function setbounds(x::Variable, b::Bounds)
     setlowerbound(x, lower(b))
@@ -60,10 +60,10 @@ function update(x::StateRecord{X, M},
         end
     end
 
-    joint_limit_results = [resolve_joint_limit(model, xnext, joint) for joint in joints(mechanism)]
+    joint_limit_results = [resolve_joint_limit(model, xnext, joint) for joint in tree_joints(mechanism)]
     joint_limit_forces = zeros(GenericAffExpr{M, Variable}, num_velocities(x))
 
-    for (i, joint) in enumerate(joints(mechanism))
+    for (i, joint) in enumerate(tree_joints(mechanism))
         vrange = velocity_range(x_dynamics, joint)
         jt = joint_type(joint)
         jac_v_wrt_dq = RigidBodyDynamics.configuration_derivative_to_velocity_jacobian(jt, configuration(x_dynamics, joint))
