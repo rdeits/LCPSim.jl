@@ -111,7 +111,7 @@ end
 
 
 function simulate(x0::MechanismState{T, M},
-                  controller,
+                  controller!,
                   env::Environment,
                   Δt::Real,
                   N::Integer,
@@ -122,13 +122,16 @@ function simulate(x0::MechanismState{T, M},
     xnext = LinearizedState{Variable}(x0)
     input_limits = all_effort_bounds(x0.mechanism)
     results = LCPUpdate{Float64, M, Float64, Float64}[]
+    u = similar(velocity(x0))
     for i in 1:N
         m = Model(solver=solver)
         if relinearize
             semi_implicit_update!(xnext, x, Δt)
             # explicit_update!(xnext, x)
         end
-        u = clamp.(controller(x), input_limits)
+        t = (i - 1) * Δt
+        controller!(u, t, x)
+        u .= clamp.(u, input_limits)
         up = update(x, xnext, u, env, Δt, m)
         if i > 1
             setvalue(up, results[end])
@@ -200,3 +203,4 @@ function optimize(x0::MechanismState,
     m, results
 end
 
+passive_controller() = (τ::AbstractVector, t::Real, x::Union{MechanismState, StateRecord, AbstractVector}) -> nothing

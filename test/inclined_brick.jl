@@ -34,7 +34,7 @@ end
     mv1 = MechanismVisualizer(mechanism, URDFVisuals(urdf), vis[:stick][:model])
     Δt = 0.02
     N = 100
-    controller = x -> zeros(num_velocities(x))
+    controller = LCPSim.passive_controller()
 
     q0 = copy(configuration(x1))
     results_stick = LCPSim.simulate(x1, controller, env, Δt, N, GurobiSolver(Gurobi.Env(), OutputFlag=0))

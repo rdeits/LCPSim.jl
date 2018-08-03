@@ -81,7 +81,7 @@ end
     mech2, x2 = box_with_dummy_links()
     env2 = environment_with_floor(mech2)
 
-    controller = x -> zeros(num_velocities(x))
+    controller = LCPSim.passive_controller()
     Δt = 0.01
     N = 600
 

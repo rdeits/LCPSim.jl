@@ -23,7 +23,7 @@ using Base.Test
     x0 = MechanismState(mechanism)
     set_configuration!(x0, [-1.5, 1.8, -0.05])
     env = LCPSim.parse_contacts(mechanism, urdf);
-    controller = x -> zeros(num_velocities(x))
+    controller = LCPSim.passive_controller()
     Δt = 0.005
     N = 1700
     lcp_solver = GurobiSolver(Gurobi.Env(); OutputFlag=0)

@@ -24,7 +24,7 @@ using Base.Test
     end
     mvis = MechanismVisualizer(mechanism, URDFVisuals(urdf), vis[:robot])
     env = LCPSim.parse_contacts(mechanism, urdf, 1.0, :xz)
-    controller = x -> zeros(num_velocities(x))
+    controller = LCPSim.passive_controller()
     Δt = 0.02
     N = 100
     solver = GurobiSolver(Gurobi.Env(), OutputFlag=0)

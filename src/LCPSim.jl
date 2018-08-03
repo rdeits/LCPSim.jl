@@ -27,6 +27,7 @@ using CoordinateTransformations: transform_deriv
 using ForwardDiff
 using MechanismGeometries
 using GeometryTypes: HyperSphere, origin, radius
+using Compat
 
 include("state_record.jl")
 include("linearized_mechanism.jl")

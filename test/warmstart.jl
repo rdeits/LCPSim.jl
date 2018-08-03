@@ -15,7 +15,7 @@ function box_with_planar_base()
     mechanism = parse_urdf(Float64, urdf)
     core = findbody(mechanism, "core")
     fixed_joint = joint_to_parent(core, mechanism)
-    floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint), 
+    floating_base = Joint(fixed_joint.name, frame_before(fixed_joint), frame_after(fixed_joint),
                           Planar([1., 0, 0], [0., 0, 1.]),
                           position_bounds=[Bounds(-5., 5), Bounds(0., 3), Bounds(-2π, 2π)],
                           velocity_bounds=[Bounds(-10., 10), Bounds(-10., 10), Bounds(-10., 10)],
@@ -49,7 +49,7 @@ end
     v0 = copy(velocity(x1))
     env1 = environment_with_floor(mech1)
 
-    controller = x -> zeros(num_velocities(x))
+    controller = LCPSim.passive_controller()
     Δt = 0.01
     N = 50
     eps = 2e-3

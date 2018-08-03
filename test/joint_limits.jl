@@ -23,7 +23,8 @@ using Gurobi
 
         Δt = 0.05
         N = 100
-        results = LCPSim.simulate(x0, x -> zeros(length(velocity(x))),
+        controller = LCPSim.passive_controller()
+        results = LCPSim.simulate(x0, controller,
                                   env, Δt, N, GurobiSolver(Gurobi.Env(), OutputFlag=0))
         @test length(results) == N
         for r in results
@@ -51,7 +52,8 @@ using Gurobi
 
         Δt = 0.05
         N = 100
-        results = LCPSim.simulate(x0, x -> zeros(length(velocity(x))),
+        controller = LCPSim.passive_controller()
+        results = LCPSim.simulate(x0, controller,
                                   env, Δt, N, GurobiSolver(Gurobi.Env(), OutputFlag=0))
         @test length(results) == N
         for r in results

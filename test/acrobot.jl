@@ -109,14 +109,16 @@ K = lqr(A, B, Q, R)
     q0 = copy(configuration(x0))
     v0 = copy(velocity(x0))
 
-    controller = x -> begin
-        x̂ = vcat(configuration(x), velocity(x)) - vcat(q0, v0)
-        -K * x̂
+    controller! = let x0 = vcat(q0, v0), K = K
+        (τ, t, x) -> begin
+            x̂ = vcat(configuration(x), velocity(x)) - x0
+            τ .= -K * x̂
+        end
     end
 
     Δt = 0.05
     N = 100
-    results = LCPSim.simulate(x0, controller, env, Δt, N, CbcSolver());
+    results = LCPSim.simulate(x0, controller!, env, Δt, N, CbcSolver());
     @test length(results) == N
     @test norm(velocity(results[end].state)) < 0.03
     @test norm(configuration(results[end].state) - q0) < 1.2

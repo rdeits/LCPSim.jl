@@ -26,7 +26,7 @@ struct LCPUpdate{T, M, U, Tdt}
     joint_contacts::Vector{JointLimitResult{T, M}}
 end
 
-LCPUpdate(Δt::Tdt, ::StateRecord{T}, input::AbstractVector{U}, contacts::Associative{<:RigidBody{M}}, joint_contacts::Associative) where {T, M, U, Tdt} =
+LCPUpdate(Δt::Tdt, state::StateRecord{T}, input::AbstractVector{U}, contacts::Associative{<:RigidBody{M}}, joint_contacts::AbstractVector) where {T, M, U, Tdt} =
     LCPUpdate{T, M, U, Tdt}(Δt, state, input, contacts, joint_contacts)
 
 _getvalue(x::Variable) = JuMP._getValue(x)
