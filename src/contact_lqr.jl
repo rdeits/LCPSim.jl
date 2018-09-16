@@ -143,7 +143,7 @@ end
 function contact_jacobian(state::MechanismState{T}, contacts) where T
     mechanism = state.mechanism
     if isempty(contacts)
-        return zeros(0, num_positions(state))
+        return zeros(0, num_velocities(state))
     end
     world = root_body(mechanism)
     contact_jacobians = map(contacts) do contact
